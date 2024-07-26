@@ -1,0 +1,1390 @@
+[
+    {
+        "test_acc": 0.8362,
+        "number_layers": 2,
+        "number_neurons": 128,
+        "model_type": "adLIF"
+    },
+    {
+        "test_acc": 0.9123,
+        "number_layers": 3,
+        "number_neurons": 128,
+        "model_type": "adLIF"
+    },
+    {
+        "test_acc": 0.8887,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "adLIF"
+    },
+    {
+        "test_acc": 0.9051,
+        "number_layers": 5,
+        "number_neurons": 128,
+        "model_type": "adLIF"
+    },
+    {
+        "test_acc": 0.8561,
+        "number_layers": 6,
+        "number_neurons": 128,
+        "model_type": "adLIF"
+    },
+    {
+        "test_acc": 0.8671,
+        "number_layers": 7,
+        "number_neurons": 128,
+        "model_type": "adLIF"
+    },
+    {
+        "test_acc": 0.9036,
+        "number_layers": 2,
+        "number_neurons": 128,
+        "model_type": "LIFcomplex"
+    },
+    {
+        "test_acc": 0.92,
+        "number_layers": 3,
+        "number_neurons": 128,
+        "model_type": "LIFcomplex"
+    },
+    {
+        "test_acc": 0.9316,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFcomplex"
+    },
+    {
+        "test_acc": 0.9094,
+        "number_layers": 5,
+        "number_neurons": 128,
+        "model_type": "LIFcomplex"
+    },
+    {
+        "test_acc": 0.9108,
+        "number_layers": 6,
+        "number_neurons": 128,
+        "model_type": "LIFcomplex"
+    },
+    {
+        "test_acc": 0.8729,
+        "number_layers": 7,
+        "number_neurons": 128,
+        "model_type": "LIFcomplex"
+    },
+    {
+        "test_acc": 0.8988,
+        "number_layers": 3,
+        "number_neurons": 64,
+        "model_type": "adLIF"
+    },
+    {
+        "test_acc": 0.9151,
+        "number_layers": 3,
+        "number_neurons": 256,
+        "model_type": "adLIF"
+    },
+    {
+        "test_acc": 0.923,
+        "number_layers": 3,
+        "number_neurons": 512,
+        "model_type": "adLIF"
+    },
+    {
+        "test_acc": 0.9157,
+        "number_layers": 3,
+        "number_neurons": 1024,
+        "model_type": "adLIF"
+    },
+    {
+        "test_acc": 0.9207,
+        "number_layers": 3,
+        "number_neurons": 2048,
+        "model_type": "adLIF"
+    },
+    {
+        "test_acc": 0.9166,
+        "number_layers": 3,
+        "number_neurons": 64,
+        "model_type": "LIFcomplex"
+    },
+    {
+        "test_acc": 0.9403,
+        "number_layers": 3,
+        "number_neurons": 256,
+        "model_type": "LIFcomplex"
+    },
+    {
+        "test_acc": 0.932,
+        "number_layers": 3,
+        "number_neurons": 512,
+        "model_type": "LIFcomplex"
+    },
+    {
+        "test_acc": 0.939,
+        "number_layers": 3,
+        "number_neurons": 1024,
+        "model_type": "LIFcomplex"
+    },
+    {
+        "test_acc": 0.9416,
+        "number_layers": 3,
+        "number_neurons": 2048,
+        "model_type": "LIFcomplex"
+    },
+    {
+        "test_acc": 0.8176,
+        "number_layers": 3,
+        "number_neurons": 64,
+        "model_type": "LIF"
+    },
+    {
+        "test_acc": 0.8407,
+        "number_layers": 3,
+        "number_neurons": 256,
+        "model_type": "LIF"
+    },
+    {
+        "test_acc": 0.8503,
+        "number_layers": 3,
+        "number_neurons": 512,
+        "model_type": "LIF"
+    },
+    {
+        "test_acc": 0.8621,
+        "number_layers": 3,
+        "number_neurons": 1024,
+        "model_type": "LIF"
+    },
+    {
+        "test_acc": 0.8656,
+        "number_layers": 3,
+        "number_neurons": 2048,
+        "model_type": "LIF"
+    },
+    {
+        "test_acc": 0.7221,
+        "number_layers": 2,
+        "number_neurons": 128,
+        "model_type": "LIF"
+    },
+    {
+        "test_acc": 0.8296,
+        "number_layers": 3,
+        "number_neurons": 128,
+        "model_type": "LIF"
+    },
+    {
+        "test_acc": 0.8691,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIF"
+    },
+    {
+        "test_acc": 0.8803,
+        "number_layers": 5,
+        "number_neurons": 128,
+        "model_type": "LIF"
+    },
+    {
+        "test_acc": 0.8561,
+        "number_layers": 6,
+        "number_neurons": 128,
+        "model_type": "LIF"
+    },
+    {
+        "test_acc": 0.8671,
+        "number_layers": 7,
+        "number_neurons": 128,
+        "model_type": "LIF"
+    },
+    {
+        "test_acc": 0.8845486111111112,
+        "number_layers": 2,
+        "number_neurons": 128,
+        "model_type": "LIFcomplexDiscr",
+        "best_val_acc": 0.8825363005050505
+    },
+    {
+        "test_acc": 0.8749605429292929,
+        "number_layers": 2,
+        "number_neurons": 128,
+        "model_type": "RLIF",
+        "best_val_acc": 0.8712515782828283
+    },
+    {
+        "test_acc": 0.9222301136363638,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFcomplexDiscr",
+        "best_val_acc": 0.9287405303030304
+    },
+    {
+        "test_acc": 0.8931502525252526,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "RLIF",
+        "best_val_acc": 0.8946890782828283
+    },
+    {
+        "test_acc": 0.9120501893939394,
+        "number_layers": 5,
+        "number_neurons": 128,
+        "model_type": "LIFcomplexDiscr",
+        "best_val_acc": 0.9220328282828283
+    },
+    {
+        "test_acc": 0.8830097853535354,
+        "number_layers": 5,
+        "number_neurons": 128,
+        "model_type": "RLIF",
+        "best_val_acc": 0.8888888888888888
+    },
+    {
+        "test_acc": 0.8810369318181819,
+        "number_layers": 6,
+        "number_neurons": 128,
+        "model_type": "LIFcomplexDiscr",
+        "best_val_acc": 0.8929924242424243
+    },
+    {
+        "test_acc": 0.8673453282828283,
+        "number_layers": 6,
+        "number_neurons": 128,
+        "model_type": "RLIF",
+        "best_val_acc": 0.8719223484848485
+    },
+    {
+        "test_acc": 0.8637152777777778,
+        "number_layers": 7,
+        "number_neurons": 128,
+        "model_type": "LIFcomplexDiscr",
+        "best_val_acc": 0.8691208964646465
+    },
+    {
+        "test_acc": 0.8680555555555556,
+        "number_layers": 7,
+        "number_neurons": 128,
+        "model_type": "RLIF",
+        "best_val_acc": 0.8745659722222222
+    },
+    {
+        "test_acc": 0.8944917929292929,
+        "number_layers": 3,
+        "number_neurons": 64,
+        "model_type": "LIFcomplexDiscr",
+        "best_val_acc": 0.9055397727272728
+    },
+    {
+        "test_acc": 0.86328125,
+        "number_layers": 3,
+        "number_neurons": 64,
+        "model_type": "RLIF",
+        "best_val_acc": 0.8606376262626263
+    },
+    {
+        "test_acc": 0.9170612373737375,
+        "number_layers": 3,
+        "number_neurons": 256,
+        "model_type": "LIFcomplexDiscr",
+        "best_val_acc": 0.9280697601010102
+    },
+    {
+        "test_acc": 0.916824494949495,
+        "number_layers": 3,
+        "number_neurons": 256,
+        "model_type": "RLIF",
+        "best_val_acc": 0.9109453914141414
+    },
+    {
+        "test_acc": 0.9250315656565657,
+        "number_layers": 3,
+        "number_neurons": 512,
+        "model_type": "LIFcomplexDiscr",
+        "best_val_acc": 0.9334753787878787
+    },
+    {
+        "test_acc": 0.894452335858586,
+        "number_layers": 3,
+        "number_neurons": 512,
+        "model_type": "RLIF",
+        "best_val_acc": 0.8987926136363638
+    },
+    {
+        "test_acc": 0.9406565656565657,
+        "number_layers": 3,
+        "number_neurons": 1024,
+        "model_type": "LIFcomplexDiscr",
+        "best_val_acc": 0.9406565656565657
+    },
+    {
+        "test_acc": 0.9215198863636362,
+        "number_layers": 3,
+        "number_neurons": 1024,
+        "model_type": "RLIF",
+        "best_val_acc": 0.9226246843434343
+    },
+    {
+        "test_acc": 0.938683712121212,
+        "number_layers": 3,
+        "number_neurons": 2048,
+        "model_type": "LIFcomplexDiscr",
+        "best_val_acc": 0.9428267045454546
+    },
+    {
+        "test_acc": 0.7350063131313131,
+        "number_layers": 3,
+        "number_neurons": 2048,
+        "model_type": "RLIF",
+        "best_val_acc": 0.7395833333333334
+    },
+    {
+        "test_acc": 0.8890861742424243,
+        "number_layers": 3,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplex",
+        "best_val_acc": 0.8970959595959597
+    },
+    {
+        "test_acc": 0.9180871212121213,
+        "number_layers": 3,
+        "number_neurons": 128,
+        "model_type": "RadLIF",
+        "best_val_acc": 0.9202967171717172
+    },
+    {
+        "test_acc": 0.9099195075757576,
+        "number_layers": 3,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplex1MinAlpha",
+        "best_val_acc": 0.9118529040404041
+    },
+    {
+        "test_acc": 0.8725142045454546,
+        "number_layers": 2,
+        "number_neurons": 128,
+        "model_type": "RadLIF",
+        "best_val_acc": 0.8792613636363636
+    },
+    {
+        "test_acc": 0.8345565025252525,
+        "number_layers": 3,
+        "number_neurons": 1024,
+        "model_type": "RLIFcomplex",
+        "best_val_acc": 0.8401594065656566
+    },
+    {
+        "test_acc": 0.8558633207070707,
+        "number_layers": 8,
+        "number_neurons": 128,
+        "model_type": "LIF",
+        "best_val_acc": 0.8519965277777778
+    },
+    {
+        "test_acc": 0.8983980429292929,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "RadLIF",
+        "best_val_acc": 0.9007654671717172
+    },
+    {
+        "test_acc": 0.8909801136363638,
+        "number_layers": 3,
+        "number_neurons": 1024,
+        "model_type": "RLIFcomplex1MinAlpha",
+        "best_val_acc": 0.892282196969697
+    },
+    {
+        "test_acc": 0.8949652777777778,
+        "number_layers": 2,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplex",
+        "best_val_acc": 0.9075126262626263
+    },
+    {
+        "test_acc": 0.8762231691919191,
+        "number_layers": 5,
+        "number_neurons": 128,
+        "model_type": "RadLIF",
+        "best_val_acc": 0.8921638257575757
+    },
+    {
+        "test_acc": 0.9116161616161617,
+        "number_layers": 2,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplex1MinAlpha",
+        "best_val_acc": 0.9116161616161617
+    },
+    {
+        "test_acc": 0.7523279671717171,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplex",
+        "best_val_acc": 0.7660195707070707
+    },
+    {
+        "test_acc": 0.8731849747474747,
+        "number_layers": 8,
+        "number_neurons": 128,
+        "model_type": "LIFcomplex",
+        "best_val_acc": 0.8809580176767677
+    },
+    {
+        "test_acc": 0.9077493686868687,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplex1MinAlpha",
+        "best_val_acc": 0.9123263888888888
+    },
+    {
+        "test_acc": 0.8747632575757576,
+        "number_layers": 6,
+        "number_neurons": 128,
+        "model_type": "RadLIF",
+        "best_val_acc": 0.8725931186868687
+    },
+    {
+        "test_acc": 0.8641098484848485,
+        "number_layers": 3,
+        "number_neurons": 128,
+        "model_type": "RLIF",
+        "best_val_acc": 0.8759864267676768
+    },
+    {
+        "test_acc": 0.7637705176767677,
+        "number_layers": 5,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplex",
+        "best_val_acc": 0.7773832070707071
+    },
+    {
+        "test_acc": 0.8764599116161615,
+        "number_layers": 8,
+        "number_neurons": 128,
+        "model_type": "adLIF",
+        "best_val_acc": 0.881707702020202
+    },
+    {
+        "test_acc": 0.8689236111111112,
+        "number_layers": 5,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplex1MinAlpha",
+        "best_val_acc": 0.8804056186868687
+    },
+    {
+        "test_acc": 0.33881786616161613,
+        "number_layers": 6,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplex",
+        "best_val_acc": 0.3362531565656566
+    },
+    {
+        "test_acc": 0.8697522095959597,
+        "number_layers": 7,
+        "number_neurons": 128,
+        "model_type": "RadLIF",
+        "best_val_acc": 0.8739346590909091
+    },
+    {
+        "test_acc": 0.8613478535353535,
+        "number_layers": 9,
+        "number_neurons": 128,
+        "model_type": "LIF",
+        "best_val_acc": 0.8637152777777778
+    },
+    {
+        "test_acc": 0.8553503787878788,
+        "number_layers": 6,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplex1MinAlpha",
+        "best_val_acc": 0.8618607954545454
+    },
+    {
+        "test_acc": 0.8847458964646465,
+        "number_layers": 3,
+        "number_neurons": 64,
+        "model_type": "RadLIF",
+        "best_val_acc": 0.8907828282828283
+    },
+    {
+        "test_acc": 0.270675505050505,
+        "number_layers": 7,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplex",
+        "best_val_acc": 0.279592803030303
+    },
+    {
+        "test_acc": 0.9161931818181819,
+        "number_layers": 3,
+        "number_neurons": 256,
+        "model_type": "RadLIF",
+        "best_val_acc": 0.9172585227272728
+    },
+    {
+        "test_acc": 0.8587436868686869,
+        "number_layers": 3,
+        "number_neurons": 64,
+        "model_type": "RLIFcomplex",
+        "best_val_acc": 0.8635574494949495
+    },
+    {
+        "test_acc": 0.8542061237373737,
+        "number_layers": 9,
+        "number_neurons": 128,
+        "model_type": "LIFcomplex",
+        "best_val_acc": 0.8580729166666666
+    },
+    {
+        "test_acc": 0.9155224116161617,
+        "number_layers": 3,
+        "number_neurons": 512,
+        "model_type": "RadLIF",
+        "best_val_acc": 0.9239662247474748
+    },
+    {
+        "test_acc": 0.8429608585858586,
+        "number_layers": 7,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplex1MinAlpha",
+        "best_val_acc": 0.84146148989899
+    },
+    {
+        "test_acc": 0.9362768308080808,
+        "number_layers": 3,
+        "number_neurons": 1024,
+        "model_type": "RadLIF",
+        "best_val_acc": 0.9421559343434343
+    },
+    {
+        "test_acc": 0.8953993055555556,
+        "number_layers": 3,
+        "number_neurons": 256,
+        "model_type": "RLIFcomplex",
+        "best_val_acc": 0.8999368686868687
+    },
+    {
+        "test_acc": 0.9268071338383839,
+        "number_layers": 3,
+        "number_neurons": 2048,
+        "model_type": "RadLIF",
+        "best_val_acc": 0.9330808080808082
+    },
+    {
+        "test_acc": 0.9085779671717172,
+        "number_layers": 3,
+        "number_neurons": 64,
+        "model_type": "RLIFcomplex1MinAlpha",
+        "best_val_acc": 0.9109453914141414
+    },
+    {
+        "test_acc": 0.8777225378787878,
+        "number_layers": 3,
+        "number_neurons": 512,
+        "model_type": "RLIFcomplex",
+        "best_val_acc": 0.8890467171717172
+    },
+    {
+        "test_acc": 0.8095012626262625,
+        "number_layers": 9,
+        "number_neurons": 128,
+        "model_type": "adLIF",
+        "best_val_acc": 0.8155776515151515
+    },
+    {
+        "test_acc": 0.9228219696969696,
+        "number_layers": 3,
+        "number_neurons": 256,
+        "model_type": "RLIFcomplex1MinAlpha",
+        "best_val_acc": 0.9224273989898991
+    },
+    {
+        "test_acc": 0.9033696338383839,
+        "number_layers": 3,
+        "number_neurons": 512,
+        "model_type": "RLIFcomplex1MinAlpha",
+        "best_val_acc": 0.9049084595959597
+    },
+    {
+        "test_acc": 0.8545217803030303,
+        "number_layers": 10,
+        "number_neurons": 128,
+        "model_type": "LIF",
+        "best_val_acc": 0.86166351010101
+    },
+    {
+        "test_acc": 0.7596275252525253,
+        "number_layers": 3,
+        "number_neurons": 2048,
+        "model_type": "RLIFcomplex",
+        "best_val_acc": 0.7708727904040403
+    },
+    {
+        "test_acc": 0.8710542929292929,
+        "number_layers": 3,
+        "number_neurons": 2048,
+        "model_type": "RLIFcomplex1MinAlpha",
+        "best_val_acc": 0.8702256944444444
+    },
+    {
+        "test_acc": 0.785748106060606,
+        "number_layers": 10,
+        "number_neurons": 128,
+        "model_type": "LIFcomplex",
+        "best_val_acc": 0.7969539141414141
+    },
+    {
+        "test_acc": 0.052872474747474744,
+        "number_layers": 10,
+        "number_neurons": 128,
+        "model_type": "adLIF",
+        "best_val_acc": 0.0628945707070707
+    },
+    {
+        "test_acc": 0.8729876893939393,
+        "number_layers": 3,
+        "number_neurons": 3072,
+        "model_type": "LIF",
+        "best_val_acc": 0.8796953914141414
+    },
+    {
+        "test_acc": 0.9358822601010102,
+        "number_layers": 3,
+        "number_neurons": 3072,
+        "model_type": "LIFcomplex",
+        "best_val_acc": 0.9391177398989898
+    },
+    {
+        "test_acc": 0.913983585858586,
+        "number_layers": 3,
+        "number_neurons": 3072,
+        "model_type": "adLIF",
+        "best_val_acc": 0.9224668560606061
+    },
+    {
+        "test_acc": 0.8642676767676768,
+        "number_layers": 3,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplexNoMult",
+        "best_val_acc": 0.8751183712121212
+    },
+    {
+        "test_acc": 0.8662799873737375,
+        "number_layers": 3,
+        "number_neurons": 4096,
+        "model_type": "LIF",
+        "best_val_acc": 0.8693181818181819
+    },
+    {
+        "test_acc": 0.8018465909090909,
+        "number_layers": 3,
+        "number_neurons": 1024,
+        "model_type": "RLIFcomplexNoMult",
+        "best_val_acc": 0.8044113005050505
+    },
+    {
+        "test_acc": 0.9138257575757576,
+        "number_layers": 2,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplexNoMult",
+        "best_val_acc": 0.916863952020202
+    },
+    {
+        "test_acc": 0.7431739267676768,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplexNoMult",
+        "best_val_acc": 0.7587200126262625
+    },
+    {
+        "test_acc": 0.40877525252525254,
+        "number_layers": 5,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplexNoMult",
+        "best_val_acc": 0.41106376262626265
+    },
+    {
+        "test_acc": 0.9497711489898991,
+        "number_layers": 3,
+        "number_neurons": 4096,
+        "model_type": "LIFcomplex",
+        "best_val_acc": 0.9532433712121213
+    },
+    {
+        "test_acc": 0.6415719696969697,
+        "number_layers": 6,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplexNoMult",
+        "best_val_acc": 0.64453125
+    },
+    {
+        "test_acc": 0.4505602904040404,
+        "number_layers": 7,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplexNoMult",
+        "best_val_acc": 0.46247632575757575
+    },
+    {
+        "test_acc": 0.9204940025252526,
+        "number_layers": 3,
+        "number_neurons": 4096,
+        "model_type": "adLIF",
+        "best_val_acc": 0.9267676767676769
+    },
+    {
+        "test_acc": 0.8881786616161615,
+        "number_layers": 3,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplex1MinAlphaNoB",
+        "best_val_acc": 0.8929924242424243
+    },
+    {
+        "test_acc": 0.9148121843434343,
+        "number_layers": 3,
+        "number_neurons": 128,
+        "model_type": "adLIFclamp",
+        "best_val_acc": 0.9163510101010102
+    },
+    {
+        "test_acc": 0.8021227904040403,
+        "number_layers": 3,
+        "number_neurons": 1024,
+        "model_type": "RLIFcomplex1MinAlphaNoB",
+        "best_val_acc": 0.8116319444444444
+    },
+    {
+        "test_acc": 0.924676452020202,
+        "number_layers": 3,
+        "number_neurons": 256,
+        "model_type": "adLIFclamp",
+        "best_val_acc": 0.9289772727272728
+    },
+    {
+        "test_acc": 0.79296875,
+        "number_layers": 8,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplex1MinAlpha",
+        "best_val_acc": 0.7951388888888888
+    },
+    {
+        "test_acc": 0.9261363636363638,
+        "number_layers": 3,
+        "number_neurons": 1024,
+        "model_type": "adLIFclamp",
+        "best_val_acc": 0.9291745580808082
+    },
+    {
+        "test_acc": 0.8624131944444444,
+        "number_layers": 3,
+        "number_neurons": 3072,
+        "model_type": "RLIFcomplex1MinAlpha",
+        "best_val_acc": 0.86328125
+    },
+    {
+        "test_acc": 0.6941682449494949,
+        "number_layers": 9,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplex1MinAlpha",
+        "best_val_acc": 0.6974431818181819
+    },
+    {
+        "test_acc": 0.8380681818181819,
+        "number_layers": 3,
+        "number_neurons": 4096,
+        "model_type": "RLIFcomplex1MinAlpha",
+        "best_val_acc": 0.8404750631313131
+    },
+    {
+        "test_acc": 0.8420138888888888,
+        "number_layers": 8,
+        "number_neurons": 128,
+        "model_type": "RadLIF",
+        "best_val_acc": 0.8578756313131313
+    },
+    {
+        "test_acc": 0.04853219696969697,
+        "number_layers": 9,
+        "number_neurons": 128,
+        "model_type": "RadLIF2",
+        "best_val_acc": 0.06127683080808081
+    },
+    {
+        "test_acc": 0.9419586489898991,
+        "number_layers": 3,
+        "number_neurons": 3072,
+        "model_type": "LIFcomplexDiscr",
+        "best_val_acc": 0.9445628156565657
+    },
+    {
+        "test_acc": 0.8455255681818181,
+        "number_layers": 10,
+        "number_neurons": 128,
+        "model_type": "RadLIF",
+        "best_val_acc": 0.8540088383838385
+    },
+    {
+        "test_acc": 0.9339094065656565,
+        "number_layers": 3,
+        "number_neurons": 4096,
+        "model_type": "LIFcomplexDiscr",
+        "best_val_acc": 0.9412878787878787
+    },
+    {
+        "test_acc": 0.8664378156565656,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8696732954545454
+    },
+    {
+        "test_acc": 0.8201941287878788,
+        "number_layers": 8,
+        "number_neurons": 128,
+        "model_type": "LIFcomplexDiscr",
+        "best_val_acc": 0.8300978535353535
+    },
+    {
+        "test_acc": 0.6347458964646465,
+        "number_layers": 9,
+        "number_neurons": 128,
+        "model_type": "LIFcomplexDiscr",
+        "best_val_acc": 0.655145202020202
+    },
+    {
+        "test_acc": 0.9177320075757576,
+        "number_layers": 3,
+        "number_neurons": 3072,
+        "model_type": "RadLIF",
+        "best_val_acc": 0.9227035984848485
+    },
+    {
+        "test_acc": 0.05938289141414141,
+        "number_layers": 10,
+        "number_neurons": 128,
+        "model_type": "LIFcomplexDiscr",
+        "best_val_acc": 0.062421085858585856
+    },
+    {
+        "test_acc": 0.891729797979798,
+        "number_layers": 3,
+        "number_neurons": 4096,
+        "model_type": "RadLIF",
+        "best_val_acc": 0.8971354166666666
+    },
+    {
+        "test_acc": 0.8807607323232323,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIF2",
+        "best_val_acc": 0.8770517676767677
+    },
+    {
+        "test_acc": 0.8617818813131313,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8680160984848485
+    },
+    {
+        "test_acc": 0.8597695707070707,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8690814393939393
+    },
+    {
+        "test_acc": 0.8723563762626263,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8695154671717171
+    },
+    {
+        "test_acc": 0.8676609848484849,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8875473484848485
+    },
+    {
+        "test_acc": 0.8779592803030303,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8777619949494949
+    },
+    {
+        "test_acc": 0.8821022727272727,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8810369318181819
+    },
+    {
+        "test_acc": 0.8860479797979798,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8890467171717172
+    },
+    {
+        "test_acc": 0.8892834595959597,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8821022727272727
+    },
+    {
+        "test_acc": 0.8404750631313131,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8461174242424243
+    },
+    {
+        "test_acc": 0.8340435606060607,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8450520833333334
+    },
+    {
+        "test_acc": 0.8858506944444444,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8931897095959597
+    },
+    {
+        "test_acc": 0.8633996212121212,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8738557449494949
+    },
+    {
+        "test_acc": 0.8769333964646465,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8827730429292929
+    },
+    {
+        "test_acc": 0.8923216540404041,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8844696969696969
+    },
+    {
+        "test_acc": 0.8637152777777778,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8706202651515151
+    },
+    {
+        "test_acc": 0.8485243055555556,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8571654040404041
+    },
+    {
+        "test_acc": 0.8840356691919191,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8842724116161615
+    },
+    {
+        "test_acc": 0.9142203282828283,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.916785037878788
+    },
+    {
+        "test_acc": 0.9018702651515151,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.9079466540404041
+    },
+    {
+        "test_acc": 0.8684106691919191,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.871646148989899
+    },
+    {
+        "test_acc": 0.9159564393939394,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.9209280303030304
+    },
+    {
+        "test_acc": 0.9315814393939394,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.9337515782828283
+    },
+    {
+        "test_acc": 0.8666745580808081,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8701467803030303
+    },
+    {
+        "test_acc": 0.8565340909090909,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8552320075757576
+    },
+    {
+        "test_acc": 0.8510890151515151,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8562973484848485
+    },
+    {
+        "test_acc": 0.8231534090909091,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8311237373737375
+    },
+    {
+        "test_acc": 0.8624526515151515,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8620186237373737
+    },
+    {
+        "test_acc": 0.8564157196969697,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.86099273989899
+    },
+    {
+        "test_acc": 0.5772569444444444,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.5994712752525253
+    },
+    {
+        "test_acc": 0.8586647727272727,
+        "number_layers": 5,
+        "number_neurons": 128,
+        "model_type": "LIFfeature",
+        "best_val_acc": 0.8699494949494949
+    },
+    {
+        "test_acc": 0.8322679924242424,
+        "number_layers": 2,
+        "number_neurons": 128,
+        "model_type": "adLIFclamp",
+        "best_val_acc": 0.8474984217171717
+    },
+    {
+        "test_acc": 0.8960306186868687,
+        "number_layers": 3,
+        "number_neurons": 64,
+        "model_type": "adLIFclamp",
+        "best_val_acc": 0.9053030303030304
+    },
+    {
+        "test_acc": 0.9107481060606061,
+        "number_layers": 3,
+        "number_neurons": 512,
+        "model_type": "adLIFclamp",
+        "best_val_acc": 0.9204940025252526
+    },
+    {
+        "test_acc": 0.8994633838383839,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "adLIFclamp",
+        "best_val_acc": 0.9046717171717172
+    },
+    {
+        "test_acc": 0.9017913510101009,
+        "number_layers": 3,
+        "number_neurons": 128,
+        "model_type": "adLIFnoClamp",
+        "best_val_acc": 0.9094065656565657
+    },
+    {
+        "test_acc": 0.890546085858586,
+        "number_layers": 3,
+        "number_neurons": 64,
+        "model_type": "adLIFnoClamp",
+        "best_val_acc": 0.8972143308080808
+    },
+    {
+        "test_acc": 0.7030066287878788,
+        "number_layers": 10,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplex1MinAlpha",
+        "best_val_acc": 0.7244318181818181
+    },
+    {
+        "test_acc": 0.8803661616161615,
+        "number_layers": 5,
+        "number_neurons": 128,
+        "model_type": "adLIFclamp",
+        "best_val_acc": 0.8842724116161615
+    },
+    {
+        "test_acc": 0.9116161616161617,
+        "number_layers": 3,
+        "number_neurons": 2048,
+        "model_type": "adLIFclamp",
+        "best_val_acc": 0.9183238636363638
+    },
+    {
+        "test_acc": 0.9313052398989898,
+        "number_layers": 3,
+        "number_neurons": 1024,
+        "model_type": "adLIFnoClamp",
+        "best_val_acc": 0.938683712121212
+    },
+    {
+        "test_acc": 0.88833648989899,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "RLIFcomplex1MinAlpha2",
+        "best_val_acc": 0.8967013888888888
+    },
+    {
+        "test_acc": 0.8862452651515151,
+        "number_layers": 6,
+        "number_neurons": 128,
+        "model_type": "adLIFclamp",
+        "best_val_acc": 0.8940183080808082
+    },
+    {
+        "test_acc": 0.9187184343434343,
+        "number_layers": 4,
+        "number_neurons": 128,
+        "model_type": "adLIFnoClamp",
+        "best_val_acc": 0.9191919191919192
+    },
+    {
+        "test_acc": 0.9213226010101009,
+        "number_layers": 3,
+        "number_neurons": 3072,
+        "model_type": "adLIFclamp",
+        "best_val_acc": 0.9215988005050506
+    },
+    {
+        "test_acc": 0.8457623106060607,
+        "number_layers": 8,
+        "number_neurons": 128,
+        "model_type": "RLIF",
+        "best_val_acc": 0.8533380681818181
+    },
+    {
+        "test_acc": 0.9150489267676769,
+        "number_layers": 5,
+        "number_neurons": 128,
+        "model_type": "adLIFnoClamp",
+        "best_val_acc": 0.9189157196969696
+    },
+    {
+        "test_acc": 0.897253787878788,
+        "number_layers": 7,
+        "number_neurons": 128,
+        "model_type": "adLIFclamp",
+        "best_val_acc": 0.9013967803030304
+    },
+    {
+        "test_acc": 0.9205334595959597,
+        "number_layers": 3,
+        "number_neurons": 4096,
+        "model_type": "adLIFclamp",
+        "best_val_acc": 0.9209674873737375
+    },
+    {
+        "test_acc": 0.8227193813131313,
+        "number_layers": 9,
+        "number_neurons": 128,
+        "model_type": "RLIF",
+        "best_val_acc": 0.8276909722222222
+    },
+    {
+        "test_acc": 0.8743292297979798,
+        "number_layers": 8,
+        "number_neurons": 128,
+        "model_type": "adLIFclamp",
+        "best_val_acc": 0.8784327651515151
+    },
+    {
+        "test_acc": 0.8216934974747475,
+        "number_layers": 10,
+        "number_neurons": 128,
+        "model_type": "RLIF",
+        "best_val_acc": 0.83984375
+    },
+    {
+        "test_acc": 0.8516414141414141,
+        "number_layers": 9,
+        "number_neurons": 128,
+        "model_type": "adLIFclamp",
+        "best_val_acc": 0.8598879419191919
+    },
+    {
+        "test_acc": 0.8776041666666666,
+        "number_layers": 3,
+        "number_neurons": 3072,
+        "model_type": "RLIF",
+        "best_val_acc": 0.8881786616161615
+    },
+    {
+        "test_acc": 0.052596275252525256,
+        "number_layers": 10,
+        "number_neurons": 128,
+        "model_type": "adLIFclamp",
+        "best_val_acc": 0.06198705808080808
+    },
+    {
+        "test_acc": 0.8311631944444444,
+        "number_layers": 9,
+        "number_neurons": 128,
+        "model_type": "RadLIF",
+        "best_val_acc": 0.8474195075757576
+    },
+    {
+        "test_acc": 0.9148121843434343,
+        "number_layers": 3,
+        "number_neurons": 256,
+        "model_type": "adLIFnoClamp",
+        "best_val_acc": 0.9111426767676769
+    },
+    {
+        "test_acc": 0.8338857323232323,
+        "number_layers": 2,
+        "number_neurons": 128,
+        "model_type": "adLIFnoClamp",
+        "best_val_acc": 0.8412642045454546
+    },
+    {
+        "test_acc": 0.5294349747474747,
+        "number_layers": 3,
+        "number_neurons": 4096,
+        "model_type": "RLIF",
+        "best_val_acc": 0.5430871212121212
+    },
+    {
+        "test_acc": 0.9337121212121213,
+        "number_layers": 3,
+        "number_neurons": 512,
+        "model_type": "adLIFnoClamp",
+        "best_val_acc": 0.9365530303030304
+    },
+    {
+        "test_acc": 0.8801688762626263,
+        "number_layers": 6,
+        "number_neurons": 128,
+        "model_type": "adLIFnoClamp",
+        "best_val_acc": 0.8866398358585859
+    },
+    {
+        "test_acc": 0.9421559343434343,
+        "number_layers": 3,
+        "number_neurons": 2048,
+        "model_type": "adLIFnoClamp",
+        "best_val_acc": 0.9443260732323231
+    },
+    {
+        "test_acc": 0.606573547979798,
+        "number_layers": 7,
+        "number_neurons": 128,
+        "model_type": "adLIFnoClamp",
+        "best_val_acc": 0.6141493055555556
+    },
+    {
+        "test_acc": 0.9479955808080808,
+        "number_layers": 3,
+        "number_neurons": 4096,
+        "model_type": "adLIFnoClamp",
+        "best_val_acc": 0.9512705176767676
+    },
+    {
+        "test_acc": 0.04955808080808081,
+        "number_layers": 8,
+        "number_neurons": 128,
+        "model_type": "adLIFnoClamp",
+        "best_val_acc": 0.05890940656565656
+    },
+    {
+        "test_acc": 0.9296480429292929,
+        "number_layers": 3,
+        "number_neurons": 3072,
+        "model_type": "adLIFnoClamp",
+        "best_val_acc": 0.936316287878788
+    },
+    {
+        "test_acc": 0.048690025252525256,
+        "number_layers": 9,
+        "number_neurons": 128,
+        "model_type": "adLIFnoClamp",
+        "best_val_acc": 0.060408775252525256
+    },
+    {
+        "test_acc": 0.04569128787878787,
+        "number_layers": 10,
+        "number_neurons": 128,
+        "model_type": "adLIFnoClamp",
+        "best_val_acc": 0.06605113636363637
+    },
+    {
+        "test_acc": 0.9259785353535354,
+        "number_layers": 4,
+        "number_neurons": 256,
+        "model_type": "LIFcomplex",
+        "best_val_acc": 0.9343828914141414
+    },
+    {
+        "test_acc": 0.9196654040404041,
+        "number_layers": 4,
+        "number_neurons": 512,
+        "model_type": "LIFcomplex",
+        "best_val_acc": 0.9289772727272728
+    },
+    {
+        "test_acc": 0.9166272095959597,
+        "number_layers": 4,
+        "number_neurons": 1024,
+        "model_type": "LIFcomplex",
+        "best_val_acc": 0.9257417929292929
+    },
+    {
+        "test_acc": 0.9266493055555556,
+        "number_layers": 4,
+        "number_neurons": 2048,
+        "model_type": "LIFcomplex",
+        "best_val_acc": 0.9302793560606061
+    },
+    {
+        "test_acc": 0.9365924873737375,
+        "number_layers": 4,
+        "number_neurons": 4096,
+        "model_type": "LIFcomplex",
+        "best_val_acc": 0.9368292297979798
+    },
+    {
+        "test_acc": 0.9387626262626263,
+        "number_layers": 4,
+        "number_neurons": 3072,
+        "model_type": "LIFcomplex",
+        "best_val_acc": 0.9370265151515151
+    }
+]
