@@ -18,6 +18,24 @@ logger = logging.getLogger(__name__)
 
 def add_training_options(parser):
     parser.add_argument(
+        "--debug",
+        action='store_true',
+        help="Trigger debug mode with no sweep on wandb use.",
+    )
+    parser.add_argument(
+        "--gpu_device",
+        type=int,
+        default=0,
+        help="Which gpu device to use.",
+    )
+    parser.add_argument(
+        "--seed",
+        nargs="+",
+        default = [13, 42, 73, 190, 268],
+        type=int,
+        help="Fix one or multiple seeds for the runs.",
+    )
+    parser.add_argument(
         "--use_pretrained_model",
         type=lambda x: bool(strtobool(str(x))),
         default=False,
@@ -91,8 +109,9 @@ def add_training_options(parser):
     )
     parser.add_argument(
         "--lr",
+        nargs="+",
         type=float,
-        default=1e-2,
+        default=[1e-2],
         help="Initial learning rate for training. The default value of 0.01 "
         "is good for SHD and SC, but 0.001 seemed to work better for HD and SC.",
     )
@@ -147,11 +166,12 @@ def add_training_options(parser):
     return parser
 
 
-def print_training_options(args):
+def print_training_options(config):
     logging.info(
         """
         Training Config
         ---------------
+        Debug run: {debug}
         Use pretrained model: {use_pretrained_model}
         Only do testing: {only_do_testing}
         Load experiment folder: {load_exp_folder}
@@ -171,7 +191,8 @@ def print_training_options(args):
         Regularization min firing rate: {reg_fmin}
         Reguarization max firing rate: {reg_fmax}
         Use data augmentation: {use_augm}
+        Seed {seed}
     """.format(
-            **vars(args)
+            **config
         )
     )

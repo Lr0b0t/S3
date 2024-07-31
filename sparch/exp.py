@@ -44,48 +44,53 @@ class Experiment:
     datasets for speech command recognition (shd, ssc, hd and sc).
     """
 
-    def __init__(self, args):
+    def __init__(self, config):
 
         # New model config
-        self.model_type = args.model_type
-        self.nb_layers = args.nb_layers
-        self.nb_hiddens = args.nb_hiddens
-        self.pdrop = args.pdrop
-        self.normalization = args.normalization
-        self.use_bias = args.use_bias
-        self.bidirectional = args.bidirectional
+        self.model_type = config['model_type']
+        self.nb_layers = config['nb_layers']
+        self.nb_hiddens = config['nb_hiddens']
+        self.pdrop = config['pdrop']
+        self.normalization = config['normalization']
+        self.use_bias = config['use_bias']
+        self.bidirectional = config['bidirectional']
 
-        self.lif_feature = args.lif_feature
+        self.lif_feature = config['lif_feature']
 
         # Training config
-        self.use_pretrained_model = args.use_pretrained_model
-        self.only_do_testing = args.only_do_testing
-        self.load_exp_folder = args.load_exp_folder
-        self.new_exp_folder = args.new_exp_folder
-        self.dataset_name = args.dataset_name
-        self.data_folder = args.data_folder
-        self.log_tofile = args.log_tofile
-        self.save_best = args.save_best
-        self.batch_size = args.batch_size
-        self.nb_epochs = args.nb_epochs
-        self.start_epoch = args.start_epoch
-        self.lr = args.lr
-        self.scheduler_patience = args.scheduler_patience
-        self.scheduler_factor = args.scheduler_factor
-        self.use_regularizers = args.use_regularizers
-        self.reg_factor = args.reg_factor
-        self.reg_fmin = args.reg_fmin
-        self.reg_fmax = args.reg_fmax
-        self.use_augm = args.use_augm
+        self.use_pretrained_model = config['use_pretrained_model']
+        self.only_do_testing = config['only_do_testing']
+        self.load_exp_folder = config['load_exp_folder']
+        self.new_exp_folder = config['new_exp_folder']
+        self.dataset_name = config['dataset_name']
+        self.data_folder = config['data_folder']
+        self.log_tofile = config['log_tofile']
+        self.save_best = config['save_best']
+        self.batch_size = config['batch_size']
+        self.nb_epochs = config['nb_epochs']
+        self.start_epoch = config['start_epoch']
+        self.lr = config['lr']
+        self.scheduler_patience = config['scheduler_patience']
+        self.scheduler_factor = config['scheduler_factor']
+        self.use_regularizers = config['use_regularizers']
+        self.reg_factor = config['reg_factor']
+        self.reg_fmin = config['reg_fmin']
+        self.reg_fmax = config['reg_fmax']
+        self.use_augm = config['use_augm']
+
+        self.debug = config['debug']
+
+        self.seed = config['seed']
+        self.set_seed()
 
         # Initialize logging and output folders
         self.init_exp_folders()
         self.init_logging()
-        print_model_options(args)
-        print_training_options(args)
+        print_model_options(config)
+        print_training_options(config)
 
         # Set device
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device(f"cuda:{config['gpu_device']}") #torch.device("cuda" if torch.cuda.is_available() else "cpu")
         logging.info(f"\nDevice is set to {self.device}\n")
 
         # Initialize dataloaders and model
@@ -132,7 +137,8 @@ class Experiment:
             logging.info(f"\nBest valid acc at epoch {best_epoch}: {best_acc}\n")
             logging.info("\n------ Training finished ------\n")
 
-            wandb.log({"best valid acc":best_acc}, commit=False)
+            if not self.debug:
+                wandb.log({"best valid acc":best_acc}, commit=False)
             self.best_val_acc = best_acc
 
             # Loading best model
@@ -351,23 +357,16 @@ class Experiment:
             p.numel() for p in self.net.parameters() if p.requires_grad
         )
         logging.info(f"Total number of trainable parameters is {self.nb_params}")
-        DEBUG = False
-        if not DEBUG:
-            
-            wandb.login()
-            if self.dataset_name == "shd":
-                wandb_run = wandb.init(
-                # Set the project where this run will be logged
-                project="SHD_sparch_original" , 
-                entity="maximes_crew",
-                name = str(self.nb_layers)+"x"+str(self.nb_hiddens)+self.model_type+'_'.join(self.lif_feature))
-            if self.dataset_name == "ssc":
-                wandb_run = wandb.init(
-                # Set the project where this run will be logged
-                project="SSC_sparch_original" , 
-                entity="maximes_crew",
-                name = str(self.nb_layers)+"x"+str(self.nb_hiddens)+self.model_type)
-   
+        
+
+    def set_seed(self):
+        seed = self.seed
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
     def train_one_epoch(self, e):
         """
@@ -433,7 +432,8 @@ class Experiment:
         elapsed = str(timedelta(seconds=end - start))
         logging.info(f"Epoch {e}: train elapsed time={elapsed}")
 
-        wandb.log({"train_loss":train_loss, "train_acc":train_acc}, commit=False)
+        if not self.debug:
+            wandb.log({"train_loss":train_loss, "train_acc":train_acc}, commit=False)
 
     def valid_one_epoch(self, e, best_epoch, best_acc):
         """
@@ -481,8 +481,9 @@ class Experiment:
             if self.net.is_snn:
                 epoch_spike_rate /= step
                 logging.info(f"Epoch {e}: valid mean act rate={epoch_spike_rate}")
-            
-            wandb.log({"valid loss":valid_loss, "valid acc":valid_acc}, commit=True)
+
+            if not self.debug:
+                wandb.log({"valid loss":valid_loss, "valid acc":valid_acc}, commit=True)
 
             # Update learning rate
             self.scheduler.step(valid_acc)
@@ -551,7 +552,8 @@ class Experiment:
                 epoch_spike_rate /= step
                 logging.info(f"Test mean act rate={epoch_spike_rate}")
             
-            wandb.log({"test loss":test_loss, "test acc":test_acc}, commit=False)
+            if not self.debug:
+                wandb.log({"test loss":test_loss, "test acc":test_acc}, commit=False)
             
 
             logging.info("\n-----------------------------\n")

@@ -73,7 +73,7 @@ def add_model_options(parser):
     return parser
 
 
-def print_model_options(args):
+def print_model_options(config):
     logging.info(
         """
         Model Config
@@ -86,6 +86,6 @@ def print_model_options(args):
         Use bias: {use_bias}
         Bidirectional: {bidirectional}
     """.format(
-            **vars(args)
+            **config
         )
     )
