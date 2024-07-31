@@ -1,3 +1,4 @@
 wandb/
 exp/
 tests_sh/
+**__pycache__**
