@@ -187,10 +187,10 @@ class Experiment:
             outname += "_" + '_'.join(self.lif_feature)
             exp_folder = "exp/test_exps/" + outname.replace(".", "_")
 
-        # For a new model check that out path does not exist
-        if not self.use_pretrained_model and os.path.exists(exp_folder):
-            raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), exp_folder)
-
+        # # For a new model check that out path does not exist
+        # if not self.use_pretrained_model and os.path.exists(exp_folder):
+        #     raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), exp_folder)
+        
         # Create folders to store experiment
         self.log_dir = exp_folder + "/log/"
         self.checkpoint_dir = exp_folder + "/checkpoints/"
@@ -359,11 +359,13 @@ class Experiment:
                 wandb_run = wandb.init(
                 # Set the project where this run will be logged
                 project="SHD_sparch_original" , 
+                entity="maximes_crew",
                 name = str(self.nb_layers)+"x"+str(self.nb_hiddens)+self.model_type+'_'.join(self.lif_feature))
             if self.dataset_name == "ssc":
                 wandb_run = wandb.init(
                 # Set the project where this run will be logged
                 project="SSC_sparch_original" , 
+                entity="maximes_crew",
                 name = str(self.nb_layers)+"x"+str(self.nb_hiddens)+self.model_type)
    
 
