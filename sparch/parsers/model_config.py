@@ -33,6 +33,20 @@ def add_model_options(parser):
         help="Feature of LIF",
     )
     parser.add_argument(
+        "--dt_min",
+        type=float,
+        default=[0.01],
+        nargs='+',
+        help="Min dt initialization for LIFcomplex",
+    )
+    parser.add_argument(
+        "--dt_max",
+        type=float,
+        default=[0.4],
+        nargs='+',
+        help="Max dt initializationfor LIFcomplex ",
+    )
+    parser.add_argument(
         "--nb_layers",
         type=int,
         default=3,
@@ -40,8 +54,9 @@ def add_model_options(parser):
     )
     parser.add_argument(
         "--nb_hiddens",
+        nargs='+',
         type=int,
-        default=128,
+        default=[128],
         help="Number of neurons in all hidden layers.",
     )
     parser.add_argument(
