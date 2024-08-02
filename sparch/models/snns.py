@@ -88,7 +88,8 @@ class SNN(nn.Module):
         use_bias=False,
         bidirectional=False,
         use_readout_layer=True,
-        lif_feature = "_"
+        lif_feature = "_",
+        extra_config=None
     ):
         super().__init__()
 
@@ -107,6 +108,8 @@ class SNN(nn.Module):
         self.bidirectional = bidirectional
         self.use_readout_layer = use_readout_layer
         self.is_snn = True
+
+        self.extra_config = extra_config
 
         self.lif_feature = lif_feature
 
@@ -144,7 +147,7 @@ class SNN(nn.Module):
                 )
                 input_size = self.layer_sizes[i] * (1 + self.bidirectional)
         else:
-            # Hidden layers
+            #Hidden layers
             for i in range(num_hidden_layers):
                 snn.append(
                     globals()[snn_class](
@@ -156,6 +159,7 @@ class SNN(nn.Module):
                         normalization=self.normalization,
                         use_bias=self.use_bias,
                         bidirectional=self.bidirectional,
+                        extra_config = self.extra_config
                     )
                 )
                 input_size = self.layer_sizes[i] * (1 + self.bidirectional)
@@ -234,6 +238,7 @@ class LIFLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
+        extra_config=None
     ):
         super().__init__()
 
@@ -398,6 +403,7 @@ class LIFfeatureLayer(nn.Module):
         else:
             self.dt = dt
         
+
         dt_min = 0.01
         dt_max = 0.4
 
@@ -797,6 +803,7 @@ class adLIFLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
+        extra_config=None
     ):
         super().__init__()
 
@@ -941,6 +948,7 @@ class adLIFclampLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
+        extra_config=None
     ):
         super().__init__()
 
@@ -1091,6 +1099,7 @@ class adLIFnoClampLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
+        extra_config=None
     ):
         super().__init__()
 
@@ -1235,6 +1244,7 @@ class LIFcomplexLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
+        extra_config=None
     ):
         super().__init__()
 
@@ -1255,8 +1265,8 @@ class LIFcomplexLayer(nn.Module):
         self.W = nn.Linear(self.input_size, self.hidden_size, bias=use_bias)
         log_log_alpha = torch.log(0.5 * torch.ones(self.hidden_size))
         #self.log_log_alpha_lim = [math.log(1 / 200), math.log(1 / 5)]
-        dt_min = 0.01
-        dt_max = 0.4
+        dt_min = extra_config["dt_min"]
+        dt_max = extra_config["dt_max"]
         log_dt = torch.rand(self.hidden_size)*(
             math.log(dt_max) - math.log(dt_min)
         ) + math.log(dt_min)
@@ -1388,6 +1398,7 @@ class RLIFcomplexLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
+        extra_config=None
     ):
         super().__init__()
 
@@ -1544,6 +1555,7 @@ class RLIFcomplex1MinAlphaLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
+        extra_config=None
     ):
         super().__init__()
 
@@ -1700,6 +1712,7 @@ class RLIFcomplex1MinAlphaNoBLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
+        extra_config=None
     ):
         super().__init__()
 
@@ -1856,6 +1869,7 @@ class LIFcomplexDiscrLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
+        extra_config=None
     ):
         super().__init__()
 
@@ -2018,6 +2032,7 @@ class LIFcomplex_gatedBLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
+        extra_config=None
     ):
         super().__init__()
 
@@ -2213,6 +2228,7 @@ class LIFcomplex_gatedDtLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
+        extra_config=None
     ):
         super().__init__()
 
@@ -2419,6 +2435,7 @@ class RLIFLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
+        extra_config=None
     ):
         super().__init__()
 
@@ -2552,6 +2569,7 @@ class RadLIFLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
+        extra_config=None
     ):
         super().__init__()
 

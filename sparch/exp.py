@@ -16,6 +16,7 @@ import logging
 import os
 import time
 from datetime import timedelta
+import copy
 
 import numpy as np
 import torch
@@ -46,52 +47,58 @@ class Experiment:
 
     def __init__(self, config):
 
-        # New model config
-        self.model_type = config['model_type']
-        self.nb_layers = config['nb_layers']
-        self.nb_hiddens = config['nb_hiddens']
-        self.pdrop = config['pdrop']
-        self.normalization = config['normalization']
-        self.use_bias = config['use_bias']
-        self.bidirectional = config['bidirectional']
+        # Put wandb config objects into a standard dict
+        config = {k: v for k, v in config.items()}
 
-        self.lif_feature = config['lif_feature']
+        print_model_options(config)
+        print_training_options(config)
+
+        # New model config
+        self.model_type = config.pop('model_type')
+        self.nb_layers = config.pop('nb_layers')
+        self.nb_hiddens = config.pop('nb_hiddens')
+        self.pdrop = config.pop('pdrop')
+        self.normalization = config.pop('normalization')
+        self.use_bias = config.pop('use_bias')
+        self.bidirectional = config.pop('bidirectional')
+
+        self.lif_feature = config.pop('lif_feature')
 
         # Training config
-        self.use_pretrained_model = config['use_pretrained_model']
-        self.only_do_testing = config['only_do_testing']
-        self.load_exp_folder = config['load_exp_folder']
-        self.new_exp_folder = config['new_exp_folder']
-        self.dataset_name = config['dataset_name']
-        self.data_folder = config['data_folder']
-        self.log_tofile = config['log_tofile']
-        self.save_best = config['save_best']
-        self.batch_size = config['batch_size']
-        self.nb_epochs = config['nb_epochs']
-        self.start_epoch = config['start_epoch']
-        self.lr = config['lr']
-        self.scheduler_patience = config['scheduler_patience']
-        self.scheduler_factor = config['scheduler_factor']
-        self.use_regularizers = config['use_regularizers']
-        self.reg_factor = config['reg_factor']
-        self.reg_fmin = config['reg_fmin']
-        self.reg_fmax = config['reg_fmax']
-        self.use_augm = config['use_augm']
+        self.use_pretrained_model = config.pop('use_pretrained_model')
+        self.only_do_testing = config.pop('only_do_testing')
+        self.load_exp_folder = config.pop('load_exp_folder')
+        self.new_exp_folder = config.pop('new_exp_folder')
+        self.dataset_name = config.pop('dataset_name')
+        self.data_folder = config.pop('data_folder')
+        self.log_tofile = config.pop('log_tofile')
+        self.save_best = config.pop('save_best')
+        self.batch_size = config.pop('batch_size')
+        self.nb_epochs = config.pop('nb_epochs')
+        self.start_epoch = config.pop('start_epoch')
+        self.lr = config.pop('lr')
+        self.scheduler_patience = config.pop('scheduler_patience')
+        self.scheduler_factor = config.pop('scheduler_factor')
+        self.use_regularizers = config.pop('use_regularizers')
+        self.reg_factor = config.pop('reg_factor')
+        self.reg_fmin = config.pop('reg_fmin')
+        self.reg_fmax = config.pop('reg_fmax')
+        self.use_augm = config.pop('use_augm')
 
-        self.debug = config['debug']
+        self.debug = config.pop('debug')
 
-        self.seed = config['seed']
+        self.seed = config.pop('seed')
         self.set_seed()
 
         # Initialize logging and output folders
         self.init_exp_folders()
         self.init_logging()
-        print_model_options(config)
-        print_training_options(config)
 
         # Set device
-        self.device = torch.device(f"cuda:{config['gpu_device']}") #torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device(f"cuda:{config.pop('gpu_device')}") #torch.device("cuda" if torch.cuda.is_available() else "cpu")
         logging.info(f"\nDevice is set to {self.device}\n")
+
+        self.extra_config = config
 
         # Initialize dataloaders and model
         self.init_dataset()
@@ -112,6 +119,8 @@ class Experiment:
         self.loss_fn = nn.CrossEntropyLoss()
 
         self.best_val_acc = 0
+
+
 
     def forward(self):
         """
@@ -190,7 +199,7 @@ class Experiment:
             #outname += "_bdir" if self.bidirectional else "_udir"
             #outname += "_reg" if self.use_regularizers else "_noreg"
             #outname += "_lr" + str(self.lr)
-            outname += "_" + '_'.join(self.lif_feature)
+            outname += "_" + '_'.join(self.lif_feature.keys())
             exp_folder = "exp/test_exps/" + outname.replace(".", "_")
 
         # # For a new model check that out path does not exist
@@ -330,7 +339,8 @@ class Experiment:
                 use_bias=self.use_bias,
                 bidirectional=self.bidirectional,
                 use_readout_layer=True,
-                lif_feature = self.lif_feature
+                lif_feature = self.lif_feature,
+                extra_config = self.extra_config
             ).to(self.device)
 
             logging.info(f"\nCreated new spiking model:\n {self.net}\n")

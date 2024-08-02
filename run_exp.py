@@ -38,6 +38,12 @@ args = parse_args()
 
 DEBUG = args.debug
 
+LIF_FEAT_DICT = {}
+for feat in args.lif_feature:
+    LIF_FEAT_DICT[feat] = True
+
+delattr(args, 'lif_feature')
+
 def main(debug_config=None):
     """
     Runs model training/testing using the configuration specified
@@ -46,9 +52,11 @@ def main(debug_config=None):
 
     if DEBUG:
         config = debug_config
+        config['lif_feature'] = LIF_FEAT_DICT
     else:
         wandb.init()
         config = wandb.config
+        config['lif_feature'] = LIF_FEAT_DICT
 
     # Instantiate class for the desired experiment
     experiment = Experiment(config)
@@ -71,6 +79,7 @@ if __name__ == "__main__":
         'parameters': {
             },
     }
+
 
     debug_config = {'seed':42}
     for arg, value in vars(args).items():
