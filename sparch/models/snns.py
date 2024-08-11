@@ -1279,6 +1279,11 @@ class LIFcomplexLayer(nn.Module):
 
         self.b = nn.Parameter(torch.rand(self.hidden_size))
 
+        if extra_config['half_reset']:
+            self.reset_factor = 0.5
+        else:
+            self.reset_factor = 1.0
+
         # Initialize normalinzation
         self.normalize = False
         if normalization == "batchnorm":
@@ -1353,7 +1358,7 @@ class LIFcomplexLayer(nn.Module):
         for t in range(Wx.shape[1]):
 
             # Compute membrane potential (LIF)
-            ut = alpha * (ut -st) + self.b * Wx[:, t, :]
+            ut = alpha * (ut - self.reset_factor*st) + self.b * Wx[:, t, :]
 
             # Compute spikes with surrogate gradient
             st = self.spike_fct(2*ut.real - self.threshold)
@@ -1420,8 +1425,8 @@ class RLIFcomplexLayer(nn.Module):
         self.V = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
         log_log_alpha = torch.log(0.5 * torch.ones(self.hidden_size))
         #self.log_log_alpha_lim = [math.log(1 / 200), math.log(1 / 5)]
-        dt_min = 0.01
-        dt_max = 0.4
+        dt_min = extra_config["dt_min"]
+        dt_max = extra_config["dt_max"]
         log_dt = torch.rand(self.hidden_size)*(
             math.log(dt_max) - math.log(dt_min)
         ) + math.log(dt_min)
@@ -1433,6 +1438,11 @@ class RLIFcomplexLayer(nn.Module):
         self.register("alpha_img", alpha_img, lr=0.01)
 
         self.b = nn.Parameter(torch.rand(self.hidden_size))
+
+        if extra_config['half_reset']:
+            self.reset_factor = 0.5
+        else:
+            self.reset_factor = 1.0
 
         # Initialize normalinzation
         self.normalize = False
@@ -1510,7 +1520,7 @@ class RLIFcomplexLayer(nn.Module):
         for t in range(Wx.shape[1]):
 
             # Compute membrane potential (LIF)
-            ut = alpha * (ut -st) + self.b * (Wx[:, t, :] + torch.matmul(st, V))
+            ut = alpha * (ut - self.reset_factor*st) + self.b * (Wx[:, t, :] + torch.matmul(st, V))
 
             # Compute spikes with surrogate gradient
             st = self.spike_fct(2*ut.real - self.threshold)

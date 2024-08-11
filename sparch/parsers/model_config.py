@@ -27,10 +27,15 @@ def add_model_options(parser):
     parser.add_argument(
         "--lif_feature",
         type=str,
-        choices=["_","logAlpha", "cont", "1-200_1-5", "A0_5", "dtParam", "A0_5Const", "dtLog", "Dt1ms", "Dt1", "alphaConst", "imag", "NoClamp", "B", "dim2"],
-        default="_",
+        choices=["logAlpha", "cont", "1-200_1-5", "A0_5", "dtParam", "A0_5Const", "dtLog", "Dt1ms", "Dt1", "alphaConst", "imag", "NoClamp", "B", "dim2"],
+        default=None,
         nargs='+',
         help="Feature of LIF",
+    )
+    parser.add_argument(
+        "--half_reset",
+        action='store_true',
+        help="Use half reset for LIFcomplex model.",
     )
     parser.add_argument(
         "--dt_min",

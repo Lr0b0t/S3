@@ -18,6 +18,12 @@ logger = logging.getLogger(__name__)
 
 def add_training_options(parser):
     parser.add_argument(
+        "--sweep",
+        type=str,
+        default=None,
+        help="Name of the current sweep.",
+    )
+    parser.add_argument(
         "--debug",
         action='store_true',
         help="Trigger debug mode with no sweep on wandb use.",

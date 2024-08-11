@@ -39,8 +39,9 @@ args = parse_args()
 DEBUG = args.debug
 
 LIF_FEAT_DICT = {}
-for feat in args.lif_feature:
-    LIF_FEAT_DICT[feat] = True
+if args.lif_feature:
+    for feat in args.lif_feature:
+        LIF_FEAT_DICT[feat] = True
 
 delattr(args, 'lif_feature')
 
@@ -68,7 +69,7 @@ def main(debug_config=None):
 if __name__ == "__main__":
 
     # Get experiment configuration from parser
-    
+
 
     sweep_config = {
         'method': 'grid',
@@ -80,6 +81,10 @@ if __name__ == "__main__":
             },
     }
 
+    if args.sweep:
+        sweep_name = args.sweep
+        sweep_config['name'] = sweep_name
+    delattr(args, 'sweep')
 
     debug_config = {'seed':42}
     for arg, value in vars(args).items():
@@ -89,6 +94,10 @@ if __name__ == "__main__":
         else:
             sweep_config['parameters'][arg] = {'values': [value]}
             debug_config[arg] = value
+
+    # Add LIF features to wandb config for tracking
+    for feat in LIF_FEAT_DICT:
+        sweep_config['parameters'][feat] = {'values': [True]}
 
     if DEBUG:
         main(debug_config)
@@ -102,8 +111,9 @@ if __name__ == "__main__":
         elif args.dataset_name == "hd":
             project_name="S3_HD_runs"
 
+
         sweep_id = wandb.sweep(sweep_config,
-                               entity="maximes_crew", 
-                               project=project_name) 
+                            entity="maximes_crew", 
+                            project=project_name) 
         # Run the sweep
         wandb.agent(sweep_id, function=main)
