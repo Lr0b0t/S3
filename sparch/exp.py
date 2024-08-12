@@ -45,7 +45,7 @@ class Experiment:
     datasets for speech command recognition (shd, ssc, hd and sc).
     """
 
-    def __init__(self, config):
+    def __init__(self, config, device):
 
         # Put wandb config objects into a standard dict
         config = {k: v for k, v in config.items()}
@@ -62,7 +62,7 @@ class Experiment:
         self.use_bias = config.pop('use_bias')
         self.bidirectional = config.pop('bidirectional')
 
-        self.lif_feature = config.pop('lif_feature')
+        # self.lif_feature = config.pop('lif_feature')
 
         # Training config
         self.use_pretrained_model = config.pop('use_pretrained_model')
@@ -95,7 +95,7 @@ class Experiment:
         self.init_logging()
 
         # Set device
-        self.device = torch.device(f"cuda:{config.pop('gpu_device')}") #torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device(f"cuda:{device}") #torch.device("cuda" if torch.cuda.is_available() else "cpu")
         logging.info(f"\nDevice is set to {self.device}\n")
 
         self.extra_config = config
@@ -199,7 +199,7 @@ class Experiment:
             #outname += "_bdir" if self.bidirectional else "_udir"
             #outname += "_reg" if self.use_regularizers else "_noreg"
             #outname += "_lr" + str(self.lr)
-            outname += "_" + '_'.join(self.lif_feature.keys())
+            outname += "_" #+ '_'.join(self.lif_feature.keys())
             exp_folder = "exp/test_exps/" + outname.replace(".", "_")
 
         # # For a new model check that out path does not exist
@@ -339,8 +339,7 @@ class Experiment:
                 use_bias=self.use_bias,
                 bidirectional=self.bidirectional,
                 use_readout_layer=True,
-                lif_feature = self.lif_feature,
-                extra_config = self.extra_config
+                extra_features = self.extra_config
             ).to(self.device)
 
             logging.info(f"\nCreated new spiking model:\n {self.net}\n")

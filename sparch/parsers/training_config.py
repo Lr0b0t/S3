@@ -18,10 +18,16 @@ logger = logging.getLogger(__name__)
 
 def add_training_options(parser):
     parser.add_argument(
-        "--sweep",
+        "--sweep_name",
         type=str,
         default=None,
-        help="Name of the current sweep.",
+        help="Name for the sweep to run.",
+    )
+    parser.add_argument(
+        "--sweep_id",
+        type=str,
+        default=None,
+        help="Id of the current sweep to execute.",
     )
     parser.add_argument(
         "--debug",

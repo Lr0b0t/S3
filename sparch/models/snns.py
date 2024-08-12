@@ -88,8 +88,7 @@ class SNN(nn.Module):
         use_bias=False,
         bidirectional=False,
         use_readout_layer=True,
-        lif_feature = "_",
-        extra_config=None
+        extra_features=None
     ):
         super().__init__()
 
@@ -109,9 +108,7 @@ class SNN(nn.Module):
         self.use_readout_layer = use_readout_layer
         self.is_snn = True
 
-        self.extra_config = extra_config
-
-        self.lif_feature = lif_feature
+        self.extra_features = extra_features
 
         if neuron_type not in ["LIF", "adLIF", "LIFfeature", "adLIFnoClamp","LIFfeatureDim", "adLIFclamp", "RLIF", "RadLIF", "LIFcomplex","RLIFcomplex","RLIFcomplex1MinAlphaNoB","RLIFcomplex1MinAlpha", "LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"]:
             raise ValueError(f"Invalid neuron type {neuron_type}")
@@ -129,40 +126,40 @@ class SNN(nn.Module):
             num_hidden_layers = self.num_layers - 1
         else:
             num_hidden_layers = self.num_layers
-        if self.neuron_type == "LIFfeature":
-            # Hidden layers
-            for i in range(num_hidden_layers):
-                snn.append(
-                    globals()[snn_class](
-                        input_size=input_size,
-                        hidden_size=self.layer_sizes[i],
-                        batch_size=self.batch_size,
-                        threshold=self.threshold,
-                        dropout=self.dropout,
-                        normalization=self.normalization,
-                        use_bias=self.use_bias,
-                        bidirectional=self.bidirectional,
-                        lif_feature = self.lif_feature
-                    )
+        # if self.neuron_type == "LIFfeature":
+        #     # Hidden layers
+        #     for i in range(num_hidden_layers):
+        #         snn.append(
+        #             globals()[snn_class](
+        #                 input_size=input_size,
+        #                 hidden_size=self.layer_sizes[i],
+        #                 batch_size=self.batch_size,
+        #                 threshold=self.threshold,
+        #                 dropout=self.dropout,
+        #                 normalization=self.normalization,
+        #                 use_bias=self.use_bias,
+        #                 bidirectional=self.bidirectional,
+        #                 extra_features = self.extra_features
+        #             )
+        #         )
+        #         input_size = self.layer_sizes[i] * (1 + self.bidirectional)
+        # else:
+        #Hidden layers
+        for i in range(num_hidden_layers):
+            snn.append(
+                globals()[snn_class](
+                    input_size=input_size,
+                    hidden_size=self.layer_sizes[i],
+                    batch_size=self.batch_size,
+                    threshold=self.threshold,
+                    dropout=self.dropout,
+                    normalization=self.normalization,
+                    use_bias=self.use_bias,
+                    bidirectional=self.bidirectional,
+                    extra_features = self.extra_features
                 )
-                input_size = self.layer_sizes[i] * (1 + self.bidirectional)
-        else:
-            #Hidden layers
-            for i in range(num_hidden_layers):
-                snn.append(
-                    globals()[snn_class](
-                        input_size=input_size,
-                        hidden_size=self.layer_sizes[i],
-                        batch_size=self.batch_size,
-                        threshold=self.threshold,
-                        dropout=self.dropout,
-                        normalization=self.normalization,
-                        use_bias=self.use_bias,
-                        bidirectional=self.bidirectional,
-                        extra_config = self.extra_config
-                    )
-                )
-                input_size = self.layer_sizes[i] * (1 + self.bidirectional)
+            )
+            input_size = self.layer_sizes[i] * (1 + self.bidirectional)
 
         # Readout layer
         if self.use_readout_layer:
@@ -238,7 +235,7 @@ class LIFLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
-        extra_config=None
+        extra_features=None
     ):
         super().__init__()
 
@@ -365,7 +362,7 @@ class LIFfeatureLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
-        lif_feature="_"
+        extra_features="_"
     ):
         super().__init__()
 
@@ -387,18 +384,18 @@ class LIFfeatureLayer(nn.Module):
 
         # Trainable parameters
         self.W = nn.Linear(self.input_size, self.hidden_size, bias=use_bias)
-        self.lif_feature = lif_feature
+        self.extra_features = extra_features
         device = torch.device("cuda")
-        if "1-200_1-5"  in lif_feature:
+        if "1-200_1-5"  in extra_features:
             self.alpha_lim = [np.exp(-1 / 5), np.exp(-1 / 200)]
         else:
             self.alpha_lim = [np.exp(-1 / 5), np.exp(-1 / 25)]
         dt = 1
-        if "Dt1ms" in lif_feature:
+        if "Dt1ms" in extra_features:
             dt = 0.001
-        elif "Dt1" in lif_feature:
+        elif "Dt1" in extra_features:
             dt = 1
-        if "dtParam" in lif_feature:            
+        if "dtParam" in extra_features:            
             self.register("dt", torch.ones(1)*dt, lr=0.01)
         else:
             self.dt = dt
@@ -407,21 +404,21 @@ class LIFfeatureLayer(nn.Module):
         dt_min = 0.01
         dt_max = 0.4
 
-        if "dtLog" in lif_feature:
+        if "dtLog" in extra_features:
             log_dt = torch.rand(self.hidden_size)*(
             math.log(dt_max) - math.log(dt_min)
             ) + math.log(dt_min)
             self.register("log_dt", log_dt, lr=0.01)
 
-        if  "logAlpha" in lif_feature:
+        if  "logAlpha" in extra_features:
             self.log_alpha = nn.Parameter(torch.Tensor(self.hidden_size))
             nn.init.uniform_(self.log_alpha,torch.log(torch.tensor(self.alpha_lim[0])), torch.log(torch.tensor(self.alpha_lim[1])))
 
-        elif "cont" in lif_feature:
-            if "A0_5" in lif_feature:
+        elif "cont" in extra_features:
+            if "A0_5" in extra_features:
                 log_log_alpha = torch.log(0.5 * torch.ones(self.hidden_size)).to(device)
                 self.register("log_log_alpha", log_log_alpha, lr=0.01)
-            elif "A0_5Const" in lif_feature:
+            elif "A0_5Const" in extra_features:
                 self.log_log_alpha = torch.log(0.5 * torch.ones(self.hidden_size)).to(device)
             else:
                 self.log_log_alpha = nn.Parameter(torch.Tensor(self.hidden_size))
@@ -436,7 +433,7 @@ class LIFfeatureLayer(nn.Module):
 
         
         
-        if "imag" in lif_feature:
+        if "imag" in extra_features:
             alpha_img =  math.pi * torch.ones(self.hidden_size).to(device) # torch.arange(self.hidden_size)
             self.register("alpha_img", alpha_img, lr=0.01)
 
@@ -499,25 +496,25 @@ class LIFfeatureLayer(nn.Module):
         ut = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
         st = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
         s = []
-        if "imag"  in self.lif_feature:
+        if "imag"  in self.extra_features:
             eigenval = -torch.exp(self.log_log_alpha)+1j*self.alpha_img
         else:
             eigenval = -torch.exp(self.log_log_alpha) 
 
-        if "dtLog"  in self.lif_feature:
+        if "dtLog"  in self.extra_features:
             self.dt = torch.exp(self.log_dt)
             
         
-        if "logAlpha" in self.lif_feature :
+        if "logAlpha" in self.extra_features :
             alpha = torch.exp(self.log_alpha)
-        elif "cont" in self.lif_feature:
+        elif "cont" in self.extra_features:
             alpha = torch.exp(self.dt*eigenval)
         else:
             alpha = self.alpha
-        if "NoClamp" not in self.lif_feature:
+        if "NoClamp" not in self.extra_features:
             alpha = torch.clamp(alpha, min=self.alpha_lim[0], max=self.alpha_lim[1])
 
-        if "B" in  self.lif_feature:
+        if "B" in  self.extra_features:
             b = self.b
         else:
             b = (1 - alpha)
@@ -529,7 +526,7 @@ class LIFfeatureLayer(nn.Module):
             ut = alpha * (ut - st) + b * Wx[:, t, :]
 
             # Compute spikes with surrogate gradient
-            if "imag"  in self.lif_feature:
+            if "imag"  in self.extra_features:
                 st = self.spike_fct(2*ut.real - self.threshold)
             else:
                 st = self.spike_fct(ut - self.threshold)
@@ -586,7 +583,7 @@ class LIFfeatureDimLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
-        lif_feature="_"
+        extra_features="_"
     ):
         super().__init__()
 
@@ -606,24 +603,24 @@ class LIFfeatureDimLayer(nn.Module):
 
         
         self.dim = 1
-        if "dim2"  in lif_feature:
+        if "dim2"  in extra_features:
             self.dim = 2
         self.b = nn.Parameter(torch.rand(self.hidden_size, self.dim)*0.5)
 
         # Trainable parameters
         self.W = nn.Linear(self.input_size, self.hidden_size, bias=use_bias)
-        self.lif_feature = lif_feature
+        self.extra_features = extra_features
         device = torch.device("cuda")
-        if "1-200_1-5"  in lif_feature:
+        if "1-200_1-5"  in extra_features:
             self.alpha_lim = [np.exp(-1 / 5), np.exp(-1 / 200)]
         else:
             self.alpha_lim = [np.exp(-1 / 5), np.exp(-1 / 25)]
         dt = 1
-        if "Dt1ms" in lif_feature:
+        if "Dt1ms" in extra_features:
             dt = 0.001
-        elif "Dt1" in lif_feature:
+        elif "Dt1" in extra_features:
             dt = 1
-        if "dtParam" in lif_feature:            
+        if "dtParam" in extra_features:            
             self.register("dt", torch.ones(1)*dt, lr=0.01)
         else:
             self.dt = dt
@@ -631,21 +628,21 @@ class LIFfeatureDimLayer(nn.Module):
         dt_min = 0.01
         dt_max = 0.4
 
-        if "dtLog" in lif_feature:
+        if "dtLog" in extra_features:
             log_dt = torch.rand(self.hidden_size)*(
             math.log(dt_max) - math.log(dt_min)
             ) + math.log(dt_min)
             self.register("log_dt", log_dt, lr=0.01)
 
-        if  "logAlpha" in lif_feature:
+        if  "logAlpha" in extra_features:
             self.log_alpha = nn.Parameter(torch.Tensor(self.hidden_size))
             nn.init.uniform_(self.log_alpha,torch.log(torch.tensor(self.alpha_lim[0])), torch.log(torch.tensor(self.alpha_lim[1])))
 
-        elif "cont" in lif_feature:
-            if "A0_5" in lif_feature:
+        elif "cont" in extra_features:
+            if "A0_5" in extra_features:
                 log_log_alpha = torch.log(0.5 * torch.ones(self.hidden_size)).to(device)
                 self.register("log_log_alpha", log_log_alpha, lr=0.01)
-            elif "A0_5Const" in lif_feature:
+            elif "A0_5Const" in extra_features:
                 self.log_log_alpha = torch.log(0.5 * torch.ones(self.hidden_size)).to(device)
             else:
                 self.log_log_alpha = nn.Parameter(torch.Tensor(self.hidden_size, self.dim))
@@ -660,7 +657,7 @@ class LIFfeatureDimLayer(nn.Module):
 
         
         
-        if "imag" in lif_feature:
+        if "imag" in extra_features:
             alpha_img =  math.pi * torch.ones(self.hidden_size).to(device) # torch.arange(self.hidden_size)
             self.register("alpha_img", alpha_img, lr=0.01)
 
@@ -716,23 +713,23 @@ class LIFfeatureDimLayer(nn.Module):
         ut = torch.rand(Wx.shape[0], Wx.shape[2], self.dim).to(device)
         st = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
         s = []
-        if "imag"  in self.lif_feature:
+        if "imag"  in self.extra_features:
             eigenval = -torch.exp(self.log_log_alpha)+1j*self.alpha_img
         else:
             eigenval = -torch.exp(self.log_log_alpha) 
 
-        if "dtLog"  in self.lif_feature:
+        if "dtLog"  in self.extra_features:
             self.dt = torch.exp(self.log_dt)
             
         
-        if "logAlpha" in self.lif_feature :
+        if "logAlpha" in self.extra_features :
             alpha = torch.exp(self.log_alpha)
-        elif "cont" in self.lif_feature:
+        elif "cont" in self.extra_features:
             alpha = torch.exp(self.dt*eigenval)
         else:
             alpha = self.alpha
 
-        if "B" in  self.lif_feature:
+        if "B" in  self.extra_features:
             b = self.b
         else:
             b = (1 - alpha)
@@ -744,7 +741,7 @@ class LIFfeatureDimLayer(nn.Module):
             ut = alpha * (ut -  st.unsqueeze(-1).expand(-1,-1, self.dim)) + self.b * Wx[:, t, :].unsqueeze(-1).expand(-1,-1, self.dim)
 
             # Compute spikes with surrogate gradient
-            if "imag"  in self.lif_feature:
+            if "imag"  in self.extra_features:
                 st = self.spike_fct(2*ut.real - self.threshold)
             else:
                 st = self.spike_fct(0.5*torch.sum(ut, dim=-1).real - self.threshold)
@@ -803,7 +800,7 @@ class adLIFLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
-        extra_config=None
+        extra_features=None
     ):
         super().__init__()
 
@@ -948,7 +945,7 @@ class adLIFclampLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
-        extra_config=None
+        extra_features=None
     ):
         super().__init__()
 
@@ -1099,7 +1096,7 @@ class adLIFnoClampLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
-        extra_config=None
+        extra_features=None
     ):
         super().__init__()
 
@@ -1244,7 +1241,7 @@ class LIFcomplexLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
-        extra_config=None
+        extra_features=None
     ):
         super().__init__()
 
@@ -1265,8 +1262,8 @@ class LIFcomplexLayer(nn.Module):
         self.W = nn.Linear(self.input_size, self.hidden_size, bias=use_bias)
         log_log_alpha = torch.log(0.5 * torch.ones(self.hidden_size))
         #self.log_log_alpha_lim = [math.log(1 / 200), math.log(1 / 5)]
-        dt_min = extra_config["dt_min"]
-        dt_max = extra_config["dt_max"]
+        dt_min = extra_features["dt_min"]
+        dt_max = extra_features["dt_max"]
         log_dt = torch.rand(self.hidden_size)*(
             math.log(dt_max) - math.log(dt_min)
         ) + math.log(dt_min)
@@ -1279,7 +1276,7 @@ class LIFcomplexLayer(nn.Module):
 
         self.b = nn.Parameter(torch.rand(self.hidden_size))
 
-        if extra_config['half_reset']:
+        if extra_features['half_reset']:
             self.reset_factor = 0.5
         else:
             self.reset_factor = 1.0
@@ -1403,7 +1400,7 @@ class RLIFcomplexLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
-        extra_config=None
+        extra_features=None
     ):
         super().__init__()
 
@@ -1425,8 +1422,8 @@ class RLIFcomplexLayer(nn.Module):
         self.V = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
         log_log_alpha = torch.log(0.5 * torch.ones(self.hidden_size))
         #self.log_log_alpha_lim = [math.log(1 / 200), math.log(1 / 5)]
-        dt_min = extra_config["dt_min"]
-        dt_max = extra_config["dt_max"]
+        dt_min = extra_features["dt_min"]
+        dt_max = extra_features["dt_max"]
         log_dt = torch.rand(self.hidden_size)*(
             math.log(dt_max) - math.log(dt_min)
         ) + math.log(dt_min)
@@ -1439,7 +1436,7 @@ class RLIFcomplexLayer(nn.Module):
 
         self.b = nn.Parameter(torch.rand(self.hidden_size))
 
-        if extra_config['half_reset']:
+        if extra_features['half_reset']:
             self.reset_factor = 0.5
         else:
             self.reset_factor = 1.0
@@ -1565,7 +1562,7 @@ class RLIFcomplex1MinAlphaLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
-        extra_config=None
+        extra_features=None
     ):
         super().__init__()
 
@@ -1722,7 +1719,7 @@ class RLIFcomplex1MinAlphaNoBLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
-        extra_config=None
+        extra_features=None
     ):
         super().__init__()
 
@@ -1879,7 +1876,7 @@ class LIFcomplexDiscrLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
-        extra_config=None
+        extra_features=None
     ):
         super().__init__()
 
@@ -2042,7 +2039,7 @@ class LIFcomplex_gatedBLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
-        extra_config=None
+        extra_features=None
     ):
         super().__init__()
 
@@ -2238,7 +2235,7 @@ class LIFcomplex_gatedDtLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
-        extra_config=None
+        extra_features=None
     ):
         super().__init__()
 
@@ -2445,7 +2442,7 @@ class RLIFLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
-        extra_config=None
+        extra_features=None
     ):
         super().__init__()
 
@@ -2579,7 +2576,7 @@ class RadLIFLayer(nn.Module):
         normalization="batchnorm",
         use_bias=False,
         bidirectional=False,
-        extra_config=None
+        extra_features=None
     ):
         super().__init__()
 
