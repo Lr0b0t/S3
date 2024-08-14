@@ -34,8 +34,9 @@ def add_model_options(parser):
     )
     parser.add_argument(
         "--half_reset",
-        action='store_true',
-        help="Use half reset for LIFcomplex model.",
+        type=bool,
+        default=True,
+        help="Use half reset for LIFcomplex and RLIFcomplex models. True by default",
     )
     parser.add_argument(
         "--dt_min",

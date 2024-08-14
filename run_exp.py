@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
         if args.lif_feature:
             for feat in args.lif_feature:
-                sweep_config['parameters'][feat] = {'values': True}
+                sweep_config['parameters'][feat] = {'values': [True]}
                 debug_config[feat] = True
 
         delattr(args, 'lif_feature')

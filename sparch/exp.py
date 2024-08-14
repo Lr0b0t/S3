@@ -442,7 +442,7 @@ class Experiment:
         logging.info(f"Epoch {e}: train elapsed time={elapsed}")
 
         if not self.debug:
-            wandb.log({"train_loss":train_loss, "train_acc":train_acc}, commit=False)
+            wandb.log({"train_loss":train_loss, "train_acc":train_acc, "train sparsity": 1-epoch_spike_rate}, commit=False)
 
     def valid_one_epoch(self, e, best_epoch, best_acc):
         """
@@ -491,8 +491,9 @@ class Experiment:
                 epoch_spike_rate /= step
                 logging.info(f"Epoch {e}: valid mean act rate={epoch_spike_rate}")
 
+
             if not self.debug:
-                wandb.log({"valid loss":valid_loss, "valid acc":valid_acc}, commit=True)
+                wandb.log({"valid loss":valid_loss, "valid acc":valid_acc, "valid sparsity": 1-epoch_spike_rate}, commit=True)
 
             # Update learning rate
             self.scheduler.step(valid_acc)
@@ -562,7 +563,7 @@ class Experiment:
                 logging.info(f"Test mean act rate={epoch_spike_rate}")
             
             if not self.debug:
-                wandb.log({"test loss":test_loss, "test acc":test_acc}, commit=False)
+                wandb.log({"test loss":test_loss, "test acc":test_acc, "test sparsity": 1-epoch_spike_rate}, commit=False)
             
 
             logging.info("\n-----------------------------\n")
