@@ -164,7 +164,8 @@ class SpeechCommands(Dataset):
         else:
             self.file_list = load_list(str(split) + "_list.txt")
 
-        self.labels = sorted(next(os.walk("./" + data_folder))[1])[1:]
+        self.labels = sorted(next(os.walk(data_folder))[1])[1:]
+        self.labels.remove(EXCEPT_FOLDER)
 
         # Data augmentation
         if use_augm and split == "training":
