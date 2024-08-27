@@ -18,6 +18,8 @@ import torch.nn.functional as F
 import math
 from einops import rearrange, repeat
 
+
+
 class SpikeFunctionBoxcar(torch.autograd.Function):
     """
     Compute surrogate gradient of the spike step function using
@@ -36,6 +38,14 @@ class SpikeFunctionBoxcar(torch.autograd.Function):
         grad_x[x > 0.5] = 0
         return grad_x
 
+
+# def mem_reset(mem, thresh):
+#     """Generates detached reset signal if mem > threshold.
+#     Returns reset."""
+#     mem_shift = mem - thresh
+#     reset = SpikeFunctionBoxcar.apply(mem_shift).clone().detach()
+
+#     return reset
 
 class SNN(nn.Module):
     """
@@ -187,10 +197,22 @@ class SNN(nn.Module):
 
         # Process all layers
         all_spikes = []
-        for i, snn_lay in enumerate(self.snn):
-            x = snn_lay(x)
-            if not (self.use_readout_layer and i == self.num_layers - 1):
-                all_spikes.append(x)
+
+
+        if self.extra_features['residual']:
+            res = 0
+            for i, snn_lay in enumerate(self.snn):
+                if not (self.use_readout_layer and i == self.num_layers - 1):
+                    x = snn_lay(x) + res
+                    res = x
+                    all_spikes.append(x)  
+                else:
+                    x = snn_lay(x)
+        else:
+            for i, snn_lay in enumerate(self.snn):
+                x = snn_lay(x)
+                if not (self.use_readout_layer and i == self.num_layers - 1):
+                    all_spikes.append(x)
 
         # Compute mean firing rate of each spiking neuron
         firing_rates = torch.cat(all_spikes, dim=2).mean(dim=(0, 1))
@@ -269,6 +291,10 @@ class LIFLayer(nn.Module):
         # Initialize dropout
         self.drop = nn.Dropout(p=dropout)
 
+        if extra_features['rst_detach']:
+            self.rst_detach = True
+        else:
+            self.rst_detach = False
     def forward(self, x):
 
         # Concatenate flipped sequence on batch dim
@@ -315,9 +341,14 @@ class LIFLayer(nn.Module):
 
         # Loop over time axis
         for t in range(Wx.shape[1]):
+            
+            if self.rst_detach:
+                reset = st.clone().detach()
+            else: 
+                reset = st
 
             # Compute membrane potential (LIF)
-            ut = alpha * (ut - st) + (1 - alpha) * Wx[:, t, :]
+            ut = alpha * (ut - reset) + (1 - alpha) * Wx[:, t, :]
 
             # Compute spikes with surrogate gradient
             st = self.spike_fct(ut - self.threshold)
@@ -456,6 +487,11 @@ class LIFfeatureLayer(nn.Module):
         # Initialize dropout
         self.drop = nn.Dropout(p=dropout)
 
+        if extra_features['rst_detach']:
+            self.rst_detach = True
+        else:
+            self.rst_detach = False
+
     def forward(self, x):
 
         # Concatenate flipped sequence on batch dim
@@ -521,9 +557,14 @@ class LIFfeatureLayer(nn.Module):
 
         # Loop over time axis
         for t in range(Wx.shape[1]):
+            
+            if self.rst_detach:
+                reset = st.clone().detach()
+            else: 
+                reset = st
 
             # Compute membrane potential (LIF)
-            ut = alpha * (ut - st) + b * Wx[:, t, :]
+            ut = alpha * (ut - reset) + b * Wx[:, t, :]
 
             # Compute spikes with surrogate gradient
             if "imag"  in self.extra_features:
@@ -844,7 +885,10 @@ class adLIFLayer(nn.Module):
         # Initialize dropout
         self.drop = nn.Dropout(p=dropout)
 
-
+        if extra_features['rst_detach']:
+            self.rst_detach = True
+        else:
+            self.rst_detach = False
 
     def forward(self, x):
 
@@ -897,9 +941,14 @@ class adLIFLayer(nn.Module):
         # Loop over time axis
         for t in range(Wx.shape[1]):
 
+            if self.rst_detach:
+                reset = st.clone().detach()
+            else:
+                reset = st
+
             # Compute potential (adLIF)
-            wt = beta * wt + a * ut + b * st
-            ut = alpha * (ut - st) + (1 - alpha)* (Wx[:, t, :] - wt)
+            wt = beta * wt + a * ut + b * reset
+            ut = alpha * (ut - reset) + (1 - alpha)* (Wx[:, t, :] - wt)
 
             # Compute spikes with surrogate gradient
             st = self.spike_fct(ut - self.threshold)
@@ -989,7 +1038,10 @@ class adLIFclampLayer(nn.Module):
         # Initialize dropout
         self.drop = nn.Dropout(p=dropout)
 
-
+        if extra_features['rst_detach']:
+            self.rst_detach = True
+        else:
+            self.rst_detach = False
 
     def forward(self, x):
 
@@ -1047,9 +1099,14 @@ class adLIFclampLayer(nn.Module):
         # Loop over time axis
         for t in range(Wx.shape[1]):
 
+            if self.rst_detach:
+                reset = st.clone().detach()
+            else:
+                reset = st
+
             # Compute potential (adLIF)
-            wt = beta * wt + a * ut + b * st
-            ut = alpha * (ut - st) + (1 - alpha)* (Wx[:, t, :] - wt)
+            wt = beta * wt + a * ut + b * reset
+            ut = alpha * (ut - reset) + (1 - alpha)* (Wx[:, t, :] - wt)
 
             # Compute spikes with surrogate gradient
             st = self.spike_fct(ut - self.threshold)
@@ -1140,7 +1197,10 @@ class adLIFnoClampLayer(nn.Module):
         # Initialize dropout
         self.drop = nn.Dropout(p=dropout)
 
-
+        if extra_features['rst_detach']:
+            self.rst_detach = True
+        else:
+            self.rst_detach = False
 
     def forward(self, x):
 
@@ -1193,9 +1253,14 @@ class adLIFnoClampLayer(nn.Module):
         # Loop over time axis
         for t in range(Wx.shape[1]):
 
+            if self.rst_detach:
+                reset = st.clone().detach()
+            else:
+                reset = st
+
             # Compute potential (adLIF)
-            wt = beta * wt + a * ut + b * st
-            ut = alpha * (ut - st) + (1 - alpha)* (Wx[:, t, :] - wt)
+            wt = beta * wt + a * ut + b * reset
+            ut = alpha * (ut - reset) + (1 - alpha)* (Wx[:, t, :] - wt)
 
             # Compute spikes with surrogate gradient
             st = self.spike_fct(ut - self.threshold)
@@ -1281,6 +1346,11 @@ class LIFcomplexLayer(nn.Module):
         else:
             self.reset_factor = 1.0
 
+        if extra_features['rst_detach']:
+            self.rst_detach = True
+        else:
+            self.rst_detach = False
+
         # Initialize normalinzation
         self.normalize = False
         if normalization == "batchnorm":
@@ -1292,6 +1362,8 @@ class LIFcomplexLayer(nn.Module):
 
         # Initialize dropout
         self.drop = nn.Dropout(p=dropout)
+
+
 
     def forward(self, x):
 
@@ -1354,8 +1426,13 @@ class LIFcomplexLayer(nn.Module):
         # Loop over time axis
         for t in range(Wx.shape[1]):
 
+            if self.rst_detach:
+                reset = st.clone().detach()
+            else: 
+                reset = st
+
             # Compute membrane potential (LIF)
-            ut = alpha * (ut - self.reset_factor*st) + self.b * Wx[:, t, :]
+            ut = alpha * (ut - self.reset_factor*reset) + self.b * Wx[:, t, :]
 
             # Compute spikes with surrogate gradient
             st = self.spike_fct(2*ut.real - self.threshold)
@@ -1441,6 +1518,12 @@ class RLIFcomplexLayer(nn.Module):
         else:
             self.reset_factor = 1.0
 
+        if extra_features['rst_detach']:
+            self.rst_detach = True
+        else:
+            self.rst_detach = False
+
+
         # Initialize normalinzation
         self.normalize = False
         if normalization == "batchnorm":
@@ -1516,8 +1599,13 @@ class RLIFcomplexLayer(nn.Module):
         # Loop over time axis
         for t in range(Wx.shape[1]):
 
+            if self.rst_detach:
+                reset = st.clone().detach()
+            else: 
+                reset = st
+
             # Compute membrane potential (LIF)
-            ut = alpha * (ut - self.reset_factor*st) + self.b * (Wx[:, t, :] + torch.matmul(st, V))
+            ut = alpha * (ut - self.reset_factor*reset) + self.b * (Wx[:, t, :] + torch.matmul(st, V))
 
             # Compute spikes with surrogate gradient
             st = self.spike_fct(2*ut.real - self.threshold)
@@ -2479,6 +2567,11 @@ class RLIFLayer(nn.Module):
         # Initialize dropout
         self.drop = nn.Dropout(p=dropout)
 
+        if extra_features['rst_detach']:
+            self.rst_detach = True
+        else:
+            self.rst_detach = False
+
     def forward(self, x):
 
         # Concatenate flipped sequence on batch dim
@@ -2528,9 +2621,14 @@ class RLIFLayer(nn.Module):
 
         # Loop over time axis
         for t in range(Wx.shape[1]):
+            
+            if self.rst_detach:
+                reset = st.clone().detach()
+            else: 
+                reset = st
 
             # Compute membrane potential (RLIF)
-            ut = alpha * (ut - st) + (1 - alpha) * (Wx[:, t, :] + torch.matmul(st, V))
+            ut = alpha * (ut - reset) + (1 - alpha) * (Wx[:, t, :] + torch.matmul(st, V))
 
             # Compute spikes with surrogate gradient
             st = self.spike_fct(ut - self.threshold)
@@ -2622,6 +2720,11 @@ class RadLIFLayer(nn.Module):
         # Initialize dropout
         self.drop = nn.Dropout(p=dropout)
 
+        if extra_features['rst_detach']:
+            self.rst_detach = True
+        else:
+            self.rst_detach = False
+
     def forward(self, x):
 
         # Concatenate flipped sequence on batch dim
@@ -2676,9 +2779,14 @@ class RadLIFLayer(nn.Module):
         # Loop over time axis
         for t in range(Wx.shape[1]):
 
+            if self.rst_detach:
+                reset = st.clone().detach()
+            else:
+                reset = st
+
             # Compute potential (RadLIF)
-            wt = beta * wt + a * ut + b * st
-            ut = alpha * (ut - st) + (1 - alpha) * (
+            wt = beta * wt + a * ut + b * reset
+            ut = alpha * (ut - reset) + (1 - alpha) * (
                 Wx[:, t, :] + torch.matmul(st, V) - wt
             )
 

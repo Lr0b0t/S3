@@ -131,7 +131,7 @@ def add_training_options(parser):
         "--scheduler_patience",
         nargs='+',
         type=int,
-        default=[1],
+        default=[10],
         help="Number of epochs without progress before the learning rate "
         "gets decreased.",
     )

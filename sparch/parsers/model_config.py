@@ -34,9 +34,24 @@ def add_model_options(parser):
     )
     parser.add_argument(
         "--half_reset",
+        nargs='+',
         type=bool,
-        default=True,
+        default=[True],
         help="Use half reset for LIFcomplex and RLIFcomplex models. True by default",
+    )
+    parser.add_argument(
+        "--residual",
+        nargs='+',
+        type=bool,
+        default=[False],
+        help="Use residual connections in all SNNs. False by default",
+    )
+    parser.add_argument(
+        "--rst_detach",
+        nargs='+',
+        type=bool,
+        default=[True],
+        help="Detach reset signal specifically for autograd. True by default",
     )
     parser.add_argument(
         "--dt_min",
@@ -54,8 +69,9 @@ def add_model_options(parser):
     )
     parser.add_argument(
         "--nb_layers",
+        nargs='+',
         type=int,
-        default=3,
+        default=[3],
         help="Number of layers (including readout layer).",
     )
     parser.add_argument(
