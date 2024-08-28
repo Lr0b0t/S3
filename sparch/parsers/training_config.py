@@ -138,7 +138,8 @@ def add_training_options(parser):
     parser.add_argument(
         "--scheduler_factor",
         type=float,
-        default=0.7,
+        nargs='+',
+        default=[0.7],
         help="Factor between 0 and 1 by which the learning rate gets "
         "decreased when the scheduler patience is reached.",
     )

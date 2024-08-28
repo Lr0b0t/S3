@@ -20,7 +20,7 @@ def add_model_options(parser):
     parser.add_argument(
         "--model_type",
         type=str,
-        choices=["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "RLIF", "RadLIF", "MLP", "RNN", "LiGRU", "GRU", "LIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlpha", "adLIFclamp", "RLIFcomplex1MinAlphaNoB","LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"],
+        choices=["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "RLIF", "RadLIF", "MLP", "RNN", "LiGRU", "GRU", "LIFcomplex", "LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlpha", "adLIFclamp", "RLIFcomplex1MinAlphaNoB","LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"],
         default="LIF",
         help="Type of ANN or SNN model.",
     )
@@ -38,6 +38,11 @@ def add_model_options(parser):
         type=bool,
         default=[True],
         help="Use half reset for LIFcomplex and RLIFcomplex models. True by default",
+    )
+    parser.add_argument(
+        "--shifted_relu",
+        action= 'store_true',
+        help="Use threshold shift for ReLULIFcomp model",
     )
     parser.add_argument(
         "--residual",
@@ -83,8 +88,9 @@ def add_model_options(parser):
     )
     parser.add_argument(
         "--pdrop",
+        nargs='+',
         type=float,
-        default=0.1,
+        default=[0.1],
         help="Dropout rate, must be between 0 and 1.",
     )
     parser.add_argument(
