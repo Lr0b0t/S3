@@ -20,7 +20,7 @@ def add_model_options(parser):
     parser.add_argument(
         "--model_type",
         type=str,
-        choices=["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "RLIF", "RadLIF", "MLP", "RNN", "LiGRU", "GRU", "LIFcomplex", "LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlpha", "adLIFclamp", "RLIFcomplex1MinAlphaNoB","LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"],
+        choices=["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "RLIF", "RadLIF", "MLP", "RNN", "LiGRU", "GRU", "LIFcomplex", "LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlpha", "adLIFclamp", "RLIFcomplex1MinAlphaNoB","LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"],
         default="LIF",
         help="Type of ANN or SNN model.",
     )
@@ -40,6 +40,20 @@ def add_model_options(parser):
         help="Use half reset for LIFcomplex and RLIFcomplex models. True by default",
     )
     parser.add_argument(
+        "--superspike",
+        nargs='+',
+        type=bool,
+        default=[False],
+        help="Use Superspike surrogate gradient. False by default",
+    )
+    parser.add_argument(
+        "--xavier_init",
+        nargs='+',
+        type=bool,
+        default=[False],
+        help="Use Xavier init as initialization for weights. False by default",
+    )
+    parser.add_argument(
         "--shifted_relu",
         action= 'store_true',
         help="Use threshold shift for ReLULIFcomp model",
@@ -55,7 +69,7 @@ def add_model_options(parser):
         "--rst_detach",
         nargs='+',
         type=bool,
-        default=[True],
+        default=[False],
         help="Detach reset signal specifically for autograd. True by default",
     )
     parser.add_argument(
@@ -68,7 +82,7 @@ def add_model_options(parser):
     parser.add_argument(
         "--dt_max",
         type=float,
-        default=[0.4],
+        default=[0.7],
         nargs='+',
         help="Max dt initializationfor LIFcomplex ",
     )
