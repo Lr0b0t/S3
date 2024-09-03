@@ -44,12 +44,14 @@ class SpikingDataset(Dataset):
         data_folder,
         split,
         nb_steps=100,
+        spatial_bin = 1
     ):
 
         # Fixed parameters
         self.device = "cpu"  # to allow pin memory
         self.nb_steps = nb_steps
         self.nb_units = 700
+        self.spatial_bin = spatial_bin
         self.max_time = 1.4
         self.time_bins = np.linspace(0, self.max_time, num=self.nb_steps)
 
@@ -72,7 +74,7 @@ class SpikingDataset(Dataset):
         x_val = torch.FloatTensor(np.ones(len(times))).to(self.device)
         x_size = torch.Size([self.nb_steps, self.nb_units])
 
-        x = torch.sparse.FloatTensor(x_idx, x_val, x_size).to(self.device)
+        x = torch.sparse_coo_tensor(x_idx, x_val, x_size).to(self.device)
         y = self.labels[index]
 
         return x.to_dense(), y
@@ -84,7 +86,13 @@ class SpikingDataset(Dataset):
         xlens = torch.tensor([x.shape[0] for x in xs])
         ys = torch.LongTensor(ys).to(self.device)
 
-        return xs, xlens, ys
+        if self.spatial_bin!=1:
+            binned_len = xs.shape[-1]//self.spatial_bin
+            binned_frames = torch.zeros((xs.shape[0], xs.shape[1], binned_len))
+            for i in range(binned_len):
+                binned_frames[:,:,i] = xs[:, :, self.spatial_bin*i : self.spatial_bin*(i+1)].sum(axis=-1)
+
+        return binned_frames, xlens, ys
 
 
 def load_shd_or_ssc(
@@ -93,6 +101,7 @@ def load_shd_or_ssc(
     split,
     batch_size,
     nb_steps=100,
+    spatial_bin= 1,
     shuffle=True,
     workers=0,
 ):
@@ -126,7 +135,7 @@ def load_shd_or_ssc(
         logging.info("SHD does not have a validation split. Using test split.")
         split = "test"
 
-    dataset = SpikingDataset(dataset_name, data_folder, split, nb_steps)
+    dataset = SpikingDataset(dataset_name, data_folder, split, nb_steps, spatial_bin)
     logging.info(f"Number of examples in {split} set: {len(dataset)}")
 
     loader = DataLoader(

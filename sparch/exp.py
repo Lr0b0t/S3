@@ -84,6 +84,7 @@ class Experiment:
         self.reg_fmin = config.pop('reg_fmin')
         self.reg_fmax = config.pop('reg_fmax')
         self.use_augm = config.pop('use_augm')
+        self.spatial_bin = config.pop('spatial_bin')
 
         self.debug = config.pop('debug')
 
@@ -246,7 +247,7 @@ class Experiment:
         # For the spiking datasets
         if self.dataset_name in ["shd", "ssc"]:
 
-            self.nb_inputs = 700
+            self.nb_inputs = 700//self.spatial_bin
             self.nb_outputs = 20 if self.dataset_name == "shd" else 35
 
             self.train_loader = load_shd_or_ssc(
@@ -255,6 +256,7 @@ class Experiment:
                 split="train",
                 batch_size=self.batch_size,
                 nb_steps=100,
+                spatial_bin = self.spatial_bin,
                 shuffle=True,
                 workers=8,
             )
@@ -264,6 +266,7 @@ class Experiment:
                 split="valid",
                 batch_size=self.batch_size,
                 nb_steps=100,
+                spatial_bin = self.spatial_bin,
                 shuffle=False,
                 workers=8,
             )
@@ -334,7 +337,7 @@ class Experiment:
             self.net = torch.load(self.load_path, map_location=self.device)
             logging.info(f"\nLoaded model at: {self.load_path}\n {self.net}\n")
 
-        elif self.model_type in ["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "adLIFclamp", "RLIF", "RadLIF", "LIFcomplex","LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlphaNoB","RLIFcomplex1MinAlpha", "LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"]:
+        elif self.model_type in ["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "adLIFclamp", "RLIF", "RadLIF", "LIFcomplex","LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlphaNoB","RLIFcomplex1MinAlpha", "LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"]:
 
             self.net = SNN(
                 input_shape=input_shape,
@@ -368,8 +371,9 @@ class Experiment:
         else:
             raise ValueError(f"Invalid model type {self.model_type}")
 
-        if 'LIFcomplex' not in self.model_type:
-            self.net = torch.compile(self.net)
+        # if 'LIFcomplex' not in self.model_type:
+        #     torch.set_float32_matmul_precision('high')
+        #     self.net = torch.compile(self.net)
 
         self.nb_params = sum(
             p.numel() for p in self.net.parameters() if p.requires_grad
@@ -585,7 +589,7 @@ class Experiment:
             'best_val_acc': self.best_val_acc
             }
 
-            self.save_results_to_json(new_result_entry)
+            # self.save_results_to_json(new_result_entry)
 
     def save_results_to_json(self,result_entry):
         if self.dataset_name == "ssc":

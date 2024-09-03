@@ -89,7 +89,7 @@ def add_training_options(parser):
     parser.add_argument(
         "--log_tofile",
         type=lambda x: bool(strtobool(str(x))),
-        default=False,
+        default=True,
         help="Whether to print experiment log in an dedicated file or "
         "directly inside the terminal.",
     )
@@ -105,6 +105,12 @@ def add_training_options(parser):
         type=int,
         default=128,
         help="Number of input examples inside a single batch.",
+    )
+    parser.add_argument(
+        "--spatial_bin",
+        type=int,
+        default=1,
+        help="Spatial binning for SHD.",
     )
     parser.add_argument(
         "--nb_epochs",
