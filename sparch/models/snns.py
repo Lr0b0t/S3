@@ -55,6 +55,25 @@ class SpikeFunctionSuperSpike(torch.autograd.Function):
         grad_out = grad_x / (1.0 + 10.0*torch.abs(x))
         return grad_out
 
+class SpikeFunctionSLAYER(torch.autograd.Function):
+    """
+    Compute surrogate gradient of the spike step function using
+    box-car function similar to DECOLLE, Kaiser et al. (2020).
+    """
+
+    @staticmethod
+    def forward(ctx, x):
+        ctx.save_for_backward(x)
+        return x.gt(0).float()
+
+    def backward(ctx, grad_spikes):
+        (x,) = ctx.saved_tensors
+        grad_x = grad_spikes.clone()
+        alpha=5
+        c=0.4
+        grad_out = grad_x * c * alpha / (2 * torch.exp(x.abs() * alpha))
+        return grad_out
+
 # def mem_reset(mem, thresh):
 #     """Generates detached reset signal if mem > threshold.
 #     Returns reset."""
@@ -136,7 +155,7 @@ class SNN(nn.Module):
 
         self.extra_features = extra_features
 
-        if neuron_type not in ["LIF", "adLIF", "CadLIF", "LIFfeature", "adLIFnoClamp","LIFfeatureDim", "adLIFclamp", "RLIF", "RadLIF", "LIFcomplex", "LIFrealcomplex","ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlphaNoB","RLIFcomplex1MinAlpha", "LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"]:
+        if neuron_type not in ["LIF", "adLIF", "CadLIF", "RSEadLIF", "LIFfeature", "adLIFnoClamp","LIFfeatureDim", "adLIFclamp", "RLIF", "RadLIF", "LIFcomplex", "LIFrealcomplex","ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlphaNoB","RLIFcomplex1MinAlpha", "LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"]:
             raise ValueError(f"Invalid neuron type {neuron_type}")
 
         # Init trainable parameters
@@ -189,16 +208,29 @@ class SNN(nn.Module):
 
         # Readout layer
         if self.use_readout_layer:
-            snn.append(
-                ReadoutLayer(
-                    input_size=input_size,
-                    hidden_size=self.layer_sizes[-1],
-                    batch_size=self.batch_size,
-                    dropout=self.dropout,
-                    normalization=self.normalization,
-                    use_bias=self.use_bias,
+            if self.neuron_type == 'RSEadLIF':
+                snn.append(
+                    SEReadoutLayer(
+                        input_size=input_size,
+                        hidden_size=self.layer_sizes[-1],
+                        batch_size=self.batch_size,
+                        dropout=self.dropout,
+                        normalization=self.normalization,
+                        use_bias=self.use_bias,
+                    )
                 )
-            )
+            else:
+                snn.append(
+                    ReadoutLayer(
+                        input_size=input_size,
+                        hidden_size=self.layer_sizes[-1],
+                        batch_size=self.batch_size,
+                        dropout=self.dropout,
+                        normalization=self.normalization,
+                        use_bias=self.use_bias,
+                        extra_features=self.extra_features
+                    )
+                )
 
         return snn
 
@@ -1119,6 +1151,166 @@ class CadLIFLayer(nn.Module):
 
         return torch.stack(s, dim=1)
 
+class RSEadLIFLayer(nn.Module):
+    """
+    A single layer of adaptive Leaky Integrate-and-Fire neurons without
+    layer-wise recurrent connections (adLIF).
+
+    Arguments
+    ---------
+    input_size : int
+        Number of features in the input tensors.
+    hidden_size : int
+        Number of output neurons.
+    batch_size : int
+        Batch size of the input tensors.
+    threshold : float
+        Value of spiking threshold (fixed)
+    dropout : float
+        Dropout factor (must be between 0 and 1).
+    normalization : str
+        Type of normalization. Every string different from 'batchnorm'
+        and 'layernorm' will result in no normalization.
+    use_bias : bool
+        If True, additional trainable bias is used with feedforward weights.
+    bidirectional : bool
+        If True, a bidirectional model that scans the sequence both directions
+        is used, which doubles the size of feedforward matrices in layers l>0.
+    """
+
+    def __init__(
+        self,
+        input_size,
+        hidden_size,
+        batch_size,
+        threshold=1.0,
+        dropout=0.0,
+        normalization="batchnorm",
+        use_bias=False,
+        bidirectional=False,
+        extra_features=None
+    ):
+        super().__init__()
+
+        # Fixed parameters
+        self.input_size = int(input_size)
+        self.hidden_size = int(hidden_size)
+        self.batch_size = batch_size
+        self.threshold = threshold
+        self.dropout = dropout
+        self.normalization = normalization
+        self.use_bias = use_bias
+        self.bidirectional = bidirectional
+        self.batch_size = self.batch_size * (1 + self.bidirectional)
+        self.dt = 1.0
+        self.tau_u_lim = [5, 25]
+        self.tau_w_lim = [60, 300]
+        self.a_lim = [0.0, 1.0]
+        self.b_lim = [0.0, 2.0]
+        self.q = 120
+
+        # Trainable parameters
+        self.W = nn.Linear(self.input_size, self.hidden_size, bias=use_bias)
+        self.V = nn.Parameter(torch.empty(self.hidden_size, self.hidden_size))
+        self.alpha = nn.Parameter(torch.Tensor(self.hidden_size))
+        self.beta = nn.Parameter(torch.Tensor(self.hidden_size))
+        self.a = nn.Parameter(torch.Tensor(self.hidden_size))
+        self.b = nn.Parameter(torch.Tensor(self.hidden_size))
+        self.theta = nn.Parameter(torch.Tensor(self.hidden_size))
+        
+        nn.init.uniform_(self.theta)
+        nn.init.uniform_(self.a, self.a_lim[0], self.a_lim[1])
+        nn.init.uniform_(self.b, self.b_lim[0], self.b_lim[1])
+        nn.init.orthogonal_(self.V)
+
+        # Initialize normalization
+        self.normalize = False
+        if normalization == "batchnorm":
+            self.norm = nn.BatchNorm1d(self.hidden_size, momentum=0.05)
+            self.normalize = True
+        elif normalization == "layernorm":
+            self.norm = nn.LayerNorm(self.hidden_size)
+            self.normalize = True
+
+        # Initialize dropout
+        self.drop = nn.Dropout(p=dropout)
+
+        if extra_features['rst_detach']:
+            self.rst_detach = True
+        else:
+            self.rst_detach = False
+
+    def forward(self, x):
+
+        # Concatenate flipped sequence on batch dim
+        if self.bidirectional:
+            x_flip = x.flip(1)
+            x = torch.cat([x, x_flip], dim=0)
+
+        # Change batch size if needed
+        if self.batch_size != x.shape[0]:
+            self.batch_size = x.shape[0]
+
+        # Feed-forward affine transformations (all steps in parallel)
+        Wx = self.W(x)
+
+        # Apply normalization
+        if self.normalize:
+            _Wx = self.norm(Wx.reshape(Wx.shape[0] * Wx.shape[1], Wx.shape[2]))
+            Wx = _Wx.reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
+
+        # Compute spikes via neuron dynamics
+        s = self._seadlif_cell(Wx)
+
+        # Concatenate forward and backward sequences on feat dim
+        if self.bidirectional:
+            s_f, s_b = s.chunk(2, dim=0)
+            s_b = s_b.flip(1)
+            s = torch.cat([s_f, s_b], dim=2)
+
+        # Apply dropout
+        s = self.drop(s)
+
+        return s
+
+    def SLAYER(self, x, alpha=5, c=0.4):
+        return c * alpha / (2 * torch.exp(x.abs() * alpha))
+
+    def _seadlif_cell(self, Wx):
+
+        # Initializations
+        device = Wx.device
+        utm1 = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
+        ut = torch.zeros(Wx.shape[0], Wx.shape[2]).to(device)
+        wt = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
+        st = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
+        s = []
+
+        # Bound values of the neuron parameters to plausible ranges
+        tau_u = self.tau_u_lim[0] + self.theta * (self.tau_u_lim[1]- self.tau_u_lim[0])
+        tau_w = self.tau_w_lim[0] + self.theta * (self.tau_w_lim[1]- self.tau_w_lim[0])
+        alpha = torch.exp(-self.dt / tau_u)
+        beta = torch.exp(-self.dt / tau_w)
+        a = torch.clamp(self.a, min=self.a_lim[0], max=self.a_lim[1])
+        b = torch.clamp(self.b, min=self.b_lim[0], max=self.b_lim[1])
+
+        # Loop over time axis
+        for t in range(Wx.shape[1]):
+
+            # Compute potential (adLIF)
+            
+            ut = alpha * utm1 + (1 - alpha)* (Wx[:, t, :] + F.linear(st, self.V, None) - wt)
+            u_thr = ut - self.threshold
+            st = torch.heaviside(u_thr, torch.as_tensor(0.0).type(u_thr.dtype)).detach() + (u_thr - u_thr.detach()) * self.SLAYER(u_thr).detach()
+            ut = ut * (1 - st.detach())
+            
+            wt = beta * wt + (1 - beta)* (a * ut + b * st) * self.q
+
+
+            s.append(st)
+
+        return torch.stack(s, dim=1)
+
 class adLIFclampLayer(nn.Module):
     """
     A single layer of adaptive Leaky Integrate-and-Fire neurons without
@@ -1485,6 +1677,8 @@ class LIFcomplexLayer(nn.Module):
         
         if extra_features['superspike']:
             self.spike_fct = SpikeFunctionSuperSpike.apply
+        elif extra_features['slayer']:
+            self.spike_fct = SpikeFunctionSLAYER.apply
         else:
             self.spike_fct = SpikeFunctionBoxcar.apply
 
@@ -3351,6 +3545,7 @@ class ReadoutLayer(nn.Module):
         dropout=0.0,
         normalization="batchnorm",
         use_bias=False,
+        extra_features=None
     ):
         super().__init__()
 
@@ -3367,6 +3562,103 @@ class ReadoutLayer(nn.Module):
         self.W = nn.Linear(self.input_size, self.hidden_size, bias=use_bias)
         self.alpha = nn.Parameter(torch.Tensor(self.hidden_size))
         nn.init.uniform_(self.alpha, self.alpha_lim[0], self.alpha_lim[1])
+
+        # Initialize normalization
+        self.normalize = False
+        if normalization == "batchnorm":
+            self.norm = nn.BatchNorm1d(self.hidden_size, momentum=0.05)
+            self.normalize = True
+        elif normalization == "layernorm":
+            self.norm = nn.LayerNorm(self.hidden_size)
+            self.normalize = True
+
+        # Initialize dropout
+        self.drop = nn.Dropout(p=dropout)
+
+        self.time_offset = extra_features['time_offset']
+
+    def forward(self, x):
+
+        # Feed-forward affine transformations (all steps in parallel)
+        Wx = self.W(x)
+
+        # Apply normalization
+        if self.normalize:
+            _Wx = self.norm(Wx.reshape(Wx.shape[0] * Wx.shape[1], Wx.shape[2]))
+            Wx = _Wx.reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
+
+        # Compute membrane potential via non-spiking neuron dynamics
+        out = self._readout_cell(Wx)
+
+        return out
+
+    def _readout_cell(self, Wx):
+
+        # Initializations
+        device = Wx.device
+        ut = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
+        out = torch.zeros(Wx.shape[0], Wx.shape[2]).to(device)
+
+        # Bound values of the neuron parameters to plausible ranges
+        alpha = torch.clamp(self.alpha, min=self.alpha_lim[0], max=self.alpha_lim[1])
+
+        # Loop over time axis
+        for t in range(self.time_offset, Wx.shape[1]):
+
+            # Compute potential (LIF)
+            ut = alpha * ut + (1 - alpha) * Wx[:, t, :]
+            out = out + F.softmax(ut, dim=1)
+
+        return out
+
+class SEReadoutLayer(nn.Module):
+    """
+    This function implements a single layer of non-spiking Leaky Integrate and
+    Fire (LIF) neurons, where the output consists of a cumulative sum of the
+    membrane potential using a softmax function, instead of spikes.
+
+    Arguments
+    ---------
+    input_size : int
+        Feature dimensionality of the input tensors.
+    hidden_size : int
+        Number of output neurons.
+    batch_size : int
+        Batch size of the input tensors.
+    dropout : float
+        Dropout factor (must be between 0 and 1).
+    normalization : str
+        Type of normalization. Every string different from 'batchnorm'
+        and 'layernorm' will result in no normalization.
+    use_bias : bool
+        If True, additional trainable bias is used with feedforward weights.
+    bidirectional : bool
+        If True, a bidirectional model that scans the sequence both directions
+        is used, which doubles the size of feedforward matrices in layers l>0.
+    """
+
+    def __init__(
+        self,
+        input_size,
+        hidden_size,
+        batch_size,
+        dropout=0.0,
+        normalization="batchnorm",
+        use_bias=False,
+    ):
+        super().__init__()
+
+        # Fixed parameters
+        self.input_size = int(input_size)
+        self.hidden_size = int(hidden_size)
+        self.batch_size = batch_size
+        self.dropout = dropout
+        self.normalization = normalization
+        self.use_bias = use_bias
+        self.alpha = np.exp(-1.0 / 15.0)
+
+        # Trainable parameters
+        self.W = nn.Linear(self.input_size, self.hidden_size, bias=use_bias)
 
         # Initialize normalization
         self.normalize = False
@@ -3403,10 +3695,10 @@ class ReadoutLayer(nn.Module):
         out = torch.zeros(Wx.shape[0], Wx.shape[2]).to(device)
 
         # Bound values of the neuron parameters to plausible ranges
-        alpha = torch.clamp(self.alpha, min=self.alpha_lim[0], max=self.alpha_lim[1])
+        alpha = self.alpha
 
         # Loop over time axis
-        for t in range(Wx.shape[1]):
+        for t in range(10, Wx.shape[1]):
 
             # Compute potential (LIF)
             ut = alpha * ut + (1 - alpha) * Wx[:, t, :]

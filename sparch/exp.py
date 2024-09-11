@@ -84,6 +84,9 @@ class Experiment:
         self.reg_fmin = config.pop('reg_fmin')
         self.reg_fmax = config.pop('reg_fmax')
         self.use_augm = config.pop('use_augm')
+
+        self.nb_steps = config.pop('nb_steps')
+        self.max_time = config.pop('max_time')
         self.spatial_bin = config.pop('spatial_bin')
 
         self.debug = config.pop('debug')
@@ -142,7 +145,13 @@ class Experiment:
 
             for e in range(best_epoch + 1, best_epoch + self.nb_epochs + 1):
                 self.train_one_epoch(e)
-                best_epoch, best_acc = self.valid_one_epoch(e, best_epoch, best_acc)
+                best_epoch, new_best_acc = self.valid_one_epoch(e, best_epoch, best_acc)
+                if self.dataset_name in ["sc", "ssc"]:
+                    if best_acc > 0.92 and new_best_acc>best_acc:
+                        self.test_one_epoch(self.test_loader)
+                best_acc = new_best_acc
+
+
 
             logging.info(f"\nBest valid acc at epoch {best_epoch}: {best_acc}\n")
             logging.info("\n------ Training finished ------\n")
@@ -255,7 +264,8 @@ class Experiment:
                 data_folder=self.data_folder,
                 split="train",
                 batch_size=self.batch_size,
-                nb_steps=100,
+                nb_steps=self.nb_steps,
+                max_time = self.max_time,
                 spatial_bin = self.spatial_bin,
                 shuffle=True,
                 workers=8,
@@ -265,7 +275,8 @@ class Experiment:
                 data_folder=self.data_folder,
                 split="valid",
                 batch_size=self.batch_size,
-                nb_steps=100,
+                nb_steps=self.nb_steps,
+                max_time = self.max_time,
                 spatial_bin = self.spatial_bin,
                 shuffle=False,
                 workers=8,
@@ -276,7 +287,8 @@ class Experiment:
                     data_folder=self.data_folder,
                     split="test",
                     batch_size=self.batch_size,
-                    nb_steps=100,
+                    nb_steps=self.nb_steps,
+                    max_time = self.max_time,
                     shuffle=False,
                     workers=8,
                 )
@@ -337,7 +349,7 @@ class Experiment:
             self.net = torch.load(self.load_path, map_location=self.device)
             logging.info(f"\nLoaded model at: {self.load_path}\n {self.net}\n")
 
-        elif self.model_type in ["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "adLIFclamp", "RLIF", "RadLIF", "LIFcomplex","LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlphaNoB","RLIFcomplex1MinAlpha", "LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"]:
+        elif self.model_type in ["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "RSEadLIF", "adLIFclamp", "RLIF", "RadLIF", "LIFcomplex","LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlphaNoB","RLIFcomplex1MinAlpha", "LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"]:
 
             self.net = SNN(
                 input_shape=input_shape,

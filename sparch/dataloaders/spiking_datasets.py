@@ -44,6 +44,7 @@ class SpikingDataset(Dataset):
         data_folder,
         split,
         nb_steps=100,
+        max_time=1.4,
         spatial_bin = 1
     ):
 
@@ -52,7 +53,7 @@ class SpikingDataset(Dataset):
         self.nb_steps = nb_steps
         self.nb_units = 700
         self.spatial_bin = spatial_bin
-        self.max_time = 1.4
+        self.max_time = max_time
         self.time_bins = np.linspace(0, self.max_time, num=self.nb_steps)
 
         # Read data from h5py file
@@ -101,6 +102,7 @@ def load_shd_or_ssc(
     split,
     batch_size,
     nb_steps=100,
+    max_time=1.4,
     spatial_bin= 1,
     shuffle=True,
     workers=0,
@@ -135,7 +137,7 @@ def load_shd_or_ssc(
         logging.info("SHD does not have a validation split. Using test split.")
         split = "test"
 
-    dataset = SpikingDataset(dataset_name, data_folder, split, nb_steps, spatial_bin)
+    dataset = SpikingDataset(dataset_name, data_folder, split, nb_steps, max_time, spatial_bin)
     logging.info(f"Number of examples in {split} set: {len(dataset)}")
 
     loader = DataLoader(

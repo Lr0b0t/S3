@@ -107,10 +107,28 @@ def add_training_options(parser):
         help="Number of input examples inside a single batch.",
     )
     parser.add_argument(
+        "--nb_steps",
+        type=int,
+        default=100,
+        help="Number of timesteps.",
+    )
+    parser.add_argument(
+        "--max_time",
+        type=float,
+        default=1.4,
+        help="Max time for SHD samples.",
+    )
+    parser.add_argument(
         "--spatial_bin",
         type=int,
         default=1,
         help="Spatial binning for SHD.",
+    )
+    parser.add_argument(
+        "--time_offset",
+        type=int,
+        default=0,
+        help="Offset in # of timesteps to start counting loss.",
     )
     parser.add_argument(
         "--nb_epochs",

@@ -20,7 +20,7 @@ def add_model_options(parser):
     parser.add_argument(
         "--model_type",
         type=str,
-        choices=["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "RLIF", "RadLIF", "MLP", "RNN", "LiGRU", "GRU", "LIFcomplex", "LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlpha", "adLIFclamp", "RLIFcomplex1MinAlphaNoB","LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"],
+        choices=["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "RSEadLIF", "RLIF", "RadLIF", "MLP", "RNN", "LiGRU", "GRU", "LIFcomplex", "LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlpha", "adLIFclamp", "RLIFcomplex1MinAlphaNoB","LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"],
         default="LIF",
         help="Type of ANN or SNN model.",
     )
@@ -45,6 +45,13 @@ def add_model_options(parser):
         type=bool,
         default=[False],
         help="Use Superspike surrogate gradient. False by default",
+    )
+    parser.add_argument(
+        "--slayer",
+        nargs='+',
+        type=bool,
+        default=[False],
+        help="Use SLAYER surrogate gradient. False by default",
     )
     parser.add_argument(
         "--xavier_init",
