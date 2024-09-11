@@ -87,6 +87,8 @@ class SpikingDataset(Dataset):
         xlens = torch.tensor([x.shape[0] for x in xs])
         ys = torch.LongTensor(ys).to(self.device)
 
+        binned_frames = xs
+
         if self.spatial_bin!=1:
             binned_len = xs.shape[-1]//self.spatial_bin
             binned_frames = torch.zeros((xs.shape[0], xs.shape[1], binned_len))

@@ -1706,6 +1706,11 @@ class LIFcomplexLayer(nn.Module):
             self.reset_factor = 0.5
         else:
             self.reset_factor = 1.0
+        
+        if extra_features['no_reset']:
+            self.reset_factor = 0
+        else:
+            self.reset_factor = 1.0
 
         if extra_features['rst_detach']:
             self.rst_detach = True

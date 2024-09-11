@@ -144,10 +144,17 @@ def add_training_options(parser):
         "model is given. First epoch will be start_epoch+1.",
     )
     parser.add_argument(
+    "--method",
+    choices=["grid", "bayes"],  # Restrict choices to grid or bayes
+    default="grid",            # Optional: set a default if desired
+    help="Choose between grid search or bayesian optimization for the sweep.",
+    )
+
+    parser.add_argument(
         "--lr",
         nargs="+",
         type=float,
-        default=[1e-2],
+        #default=[1e-2],
         help="Initial learning rate for training. The default value of 0.01 "
         "is good for SHD and SC, but 0.001 seemed to work better for HD and SC.",
     )

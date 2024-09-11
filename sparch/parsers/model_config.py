@@ -36,8 +36,15 @@ def add_model_options(parser):
         "--half_reset",
         nargs='+',
         type=bool,
-        default=[True],
+        default=[False],
         help="Use half reset for LIFcomplex and RLIFcomplex models. True by default",
+    )
+    parser.add_argument(
+        "--no_reset",
+        nargs='+',
+        type=bool,
+        default=[False],
+        help="Use no reset for LIFcomplex and RLIFcomplex models. False by default",
     )
     parser.add_argument(
         "--superspike",

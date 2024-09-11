@@ -69,25 +69,24 @@ if __name__ == "__main__":
     # Get experiment configuration from parser
 
     if args.sweep_id and not DEBUG:
-        wandb.agent("maximes_crew/"+args.sweep_id, function=main)
+        wandb.agent("maximes_crew/" + args.sweep_id, function=main)
     else:
-
         sweep_config = {
-            'method': 'grid',
+            'method': args.method,  # Method (grid or bayes) is set separately here
             'metric': {
-                'name': "valid acc",
-                'goal': 'minimize'
+                'name': "valid acc",   
+                'goal': 'maximize'
             },
-            'parameters': {
-                },
+            'parameters': {},
         }
 
         if args.sweep_name:
             sweep_config['name'] = args.sweep_name
         delattr(args, 'sweep_name')
 
-        debug_config = {'seed':42}
+        debug_config = {'seed': 42}
 
+        # Handle lif_feature separately
         if args.lif_feature:
             for feat in args.lif_feature:
                 sweep_config['parameters'][feat] = {'values': [True]}
@@ -95,14 +94,34 @@ if __name__ == "__main__":
 
         delattr(args, 'lif_feature')
 
-
+        # Process arguments into parameters based on method
         for arg, value in vars(args).items():
-            if isinstance(value, list):
-                sweep_config['parameters'][arg] = {'values': value}
-                debug_config[arg] = value[0]
-            else:
-                sweep_config['parameters'][arg] = {'values': [value]}
-                debug_config[arg] = value
+            # Skip the 'method' argument, as it's handled separately
+            if arg == "method":
+                continue
+
+            if args.method == "grid":
+                if isinstance(value, list):
+                    sweep_config['parameters'][arg] = {'values': value}
+                    debug_config[arg] = value[0]
+                else:
+                    sweep_config['parameters'][arg] = {'values': [value]}
+                    debug_config[arg] = value
+
+            elif args.method == "bayes":
+                if isinstance(value, list) and len(value) == 2:  
+                    sweep_config['parameters'][arg] = {
+                        'min': value[0],
+                        'max': value[1]
+                    }
+                    debug_config[arg] = value[0]  
+
+                elif isinstance(value, list) and len(value) != 2:  
+                    sweep_config['parameters'][arg] = {'values': value}
+                    debug_config[arg] = value[0]
+                else:
+                    sweep_config['parameters'][arg] = {'values': [value]}
+                    debug_config[arg] = value
 
 
         if DEBUG:
