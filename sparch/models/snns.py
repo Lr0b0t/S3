@@ -932,6 +932,11 @@ class adLIFLayer(nn.Module):
         else:
             self.rst_detach = False
 
+        if extra_features['no_reset']:
+            self.reset_factor = 0
+        else: 
+            self.reset_factor = 1
+
     def forward(self, x):
 
         # Concatenate flipped sequence on batch dim
@@ -988,9 +993,10 @@ class adLIFLayer(nn.Module):
             else:
                 reset = st
 
+
             # Compute potential (adLIF)
-            wt = beta * wt + a * ut + b * reset
-            ut = alpha * (ut - reset) + (1 - alpha)* (Wx[:, t, :] - wt)
+            wt = beta * wt + a * ut + b * reset * self.reset_factor
+            ut = alpha * (ut - reset* self.reset_factor) + (1 - alpha)* (Wx[:, t, :] - wt)
 
             # Compute spikes with surrogate gradient
             st = self.spike_fct(ut - self.threshold)
@@ -1701,16 +1707,13 @@ class LIFcomplexLayer(nn.Module):
         self.register("alpha_img", alpha_img, lr=0.01)
 
         self.b = nn.Parameter(torch.rand(self.hidden_size))
-
-        if extra_features['half_reset']:
+        if extra_features['no_reset']:
+            self.reset_factor = 0
+        elif extra_features['half_reset']:
             self.reset_factor = 0.5
         else:
             self.reset_factor = 1.0
         
-        if extra_features['no_reset']:
-            self.reset_factor = 0
-        else:
-            self.reset_factor = 1.0
 
         if extra_features['rst_detach']:
             self.rst_detach = True
@@ -1728,6 +1731,12 @@ class LIFcomplexLayer(nn.Module):
 
         # Initialize dropout
         self.drop = nn.Dropout(p=dropout)
+
+        self.output_linear = nn.Sequential(
+            nn.Conv1d(self.hidden_size, 2*self.hidden_size, kernel_size=1),
+            nn.GLU(dim=-2),
+        )
+        self.s_GLU = extra_features['s_GLU']
 
 
 
@@ -1754,6 +1763,9 @@ class LIFcomplexLayer(nn.Module):
 
         # Compute spikes via neuron dynamics
         s = self._lif_cell(Wx)
+        if self.s_GLU:
+            s = self.output_linear(s.reshape(s.shape[0], s.shape[2], s.shape[1])).reshape(s.shape[0], s.shape[1], s.shape[2])
+
 
         # Concatenate forward and backward sequences on feat dim
         if self.bidirectional:
@@ -2255,6 +2267,11 @@ class RLIFcomplexLayer(nn.Module):
         # Initialize dropout
         self.drop = nn.Dropout(p=dropout)
 
+        self.output_linear = nn.Sequential(
+            nn.Conv1d(self.hidden_size, 2*self.hidden_size, kernel_size=1),
+            nn.GLU(dim=-2),
+        )
+
     def forward(self, x):
 
         # Concatenate flipped sequence on batch dim
@@ -2737,6 +2754,11 @@ class LIFcomplexDiscrLayer(nn.Module):
         # Initialize dropout
         self.drop = nn.Dropout(p=dropout)
 
+        self.output_linear = nn.Sequential(
+            nn.Conv1d(self.hidden_size, 2*self.hidden_size, kernel_size=1),
+            nn.GLU(dim=-2),
+        )
+
     def forward(self, x):
 
         # Concatenate flipped sequence on batch dim
@@ -2760,6 +2782,9 @@ class LIFcomplexDiscrLayer(nn.Module):
 
         # Compute spikes via neuron dynamics
         s = self._lif_cell(Wx)
+
+        Wx = self.output_linear(Wx.reshape(Wx.shape[0], Wx.shape[2], Wx.shape[1])).reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
+
 
         # Concatenate forward and backward sequences on feat dim
         if self.bidirectional:

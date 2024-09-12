@@ -47,6 +47,13 @@ def add_model_options(parser):
         help="Use no reset for LIFcomplex and RLIFcomplex models. False by default",
     )
     parser.add_argument(
+        "--s_GLU",
+        nargs='+',
+        type=bool,
+        default=[False],
+        help="Use no reset for LIFcomplex and RLIFcomplex models. False by default",
+    )
+    parser.add_argument(
         "--superspike",
         nargs='+',
         type=bool,
