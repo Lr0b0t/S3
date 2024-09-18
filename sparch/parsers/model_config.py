@@ -14,13 +14,23 @@ import logging
 from distutils.util import strtobool
 
 logger = logging.getLogger(__name__)
+import argparse
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 def add_model_options(parser):
     parser.add_argument(
         "--model_type",
         type=str,
-        choices=["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "RSEadLIF", "RLIF", "RadLIF", "MLP", "RNN", "LiGRU", "GRU", "LIFcomplex", "LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlpha", "adLIFclamp", "RLIFcomplex1MinAlphaNoB","LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"],
+        choices=["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "RSEadLIF", "RLIF", "RadLIF", "MLP", "RNN", "LiGRU", "GRU","LIFcomplexBroad", "LIFcomplex", "LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlpha", "adLIFclamp", "RLIFcomplex1MinAlphaNoB","LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"],
         default="LIF",
         help="Type of ANN or SNN model.",
     )
@@ -35,35 +45,70 @@ def add_model_options(parser):
     parser.add_argument(
         "--half_reset",
         nargs='+',
-        type=bool,
+        type=str2bool,
         default=[False],
         help="Use half reset for LIFcomplex and RLIFcomplex models. True by default",
     )
     parser.add_argument(
+        "--exp_factor",
+        nargs='+',
+        type=int,
+        default=[2],
+        help="Number of layers (including readout layer).",
+    )
+    parser.add_argument(
         "--no_reset",
         nargs='+',
-        type=bool,
+        type=str2bool,
         default=[False],
         help="Use no reset for LIFcomplex and RLIFcomplex models. False by default",
     )
     parser.add_argument(
+        "--clamp_alpha",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Clamp the alpha real and imaginary parts.",
+    )
+    parser.add_argument(
+        "--complex_reset",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use a negative reset for real part and positive for imag part of LIFcomplex.",
+    )
+    parser.add_argument(
+        "--no_b",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use (1 - alpha) to gate input instead of b for LIFcomplex.",
+    )
+    parser.add_argument(
+        "--c_sum",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use (1 - alpha) to gate input instead of b for LIFcomplex.",
+    )
+    parser.add_argument(
         "--superspike",
         nargs='+',
-        type=bool,
+        type=str2bool,
         default=[False],
         help="Use Superspike surrogate gradient. False by default",
     )
     parser.add_argument(
         "--slayer",
         nargs='+',
-        type=bool,
+        type=str2bool,
         default=[False],
         help="Use SLAYER surrogate gradient. False by default",
     )
     parser.add_argument(
         "--xavier_init",
         nargs='+',
-        type=bool,
+        type=str2bool,
         default=[False],
         help="Use Xavier init as initialization for weights. False by default",
     )
@@ -75,14 +120,14 @@ def add_model_options(parser):
     parser.add_argument(
         "--residual",
         nargs='+',
-        type=bool,
+        type=str2bool,
         default=[False],
         help="Use residual connections in all SNNs. False by default",
     )
     parser.add_argument(
         "--rst_detach",
         nargs='+',
-        type=bool,
+        type=str2bool,
         default=[False],
         help="Detach reset signal specifically for autograd. True by default",
     )

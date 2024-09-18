@@ -84,6 +84,7 @@ class Experiment:
         self.reg_fmin = config.pop('reg_fmin')
         self.reg_fmax = config.pop('reg_fmax')
         self.use_augm = config.pop('use_augm')
+        self.s4_opt = config.pop('s4_opt')
 
         self.nb_steps = config.pop('nb_steps')
         self.max_time = config.pop('max_time')
@@ -109,7 +110,29 @@ class Experiment:
         self.init_model()
 
         # Define optimizer
-        self.opt = torch.optim.Adam(self.net.parameters(), self.lr)
+        if self.s4_opt:
+            # All parameters in the model
+            all_parameters = list(self.net.parameters())
+
+            # General parameters don't contain the special _optim key
+            params = [p for p in all_parameters if not hasattr(p, "_optim")]
+
+            # Create an optimizer with the general parameters
+            self.opt = torch.optim.AdamW(params, lr=self.lr, weight_decay=0.01)
+
+            # Add parameters with special hyperparameters
+            hps = [getattr(p, "_optim") for p in all_parameters if hasattr(p, "_optim")]
+            hps = [
+                dict(s) for s in sorted(list(dict.fromkeys(frozenset(hp.items()) for hp in hps)))
+            ]  # Unique dicts
+            for hp in hps:
+                params = [p for p in all_parameters if getattr(p, "_optim", None) == hp]
+                self.opt.add_param_group(
+                    {"params": params, **hp}
+                )
+            
+        else:
+            self.opt = torch.optim.Adam(self.net.parameters(), self.lr)
 
         # Define learning rate scheduler
         self.scheduler = ReduceLROnPlateau(
@@ -146,8 +169,11 @@ class Experiment:
             for e in range(best_epoch + 1, best_epoch + self.nb_epochs + 1):
                 self.train_one_epoch(e)
                 best_epoch, new_best_acc = self.valid_one_epoch(e, best_epoch, best_acc)
-                if self.dataset_name in ["sc", "ssc"]:
+                if self.dataset_name=="sc":
                     if best_acc > 0.92 and new_best_acc>best_acc:
+                        self.test_one_epoch(self.test_loader)
+                elif self.dataset_name=="ssc":
+                    if best_acc > 0.74 and new_best_acc>best_acc:
                         self.test_one_epoch(self.test_loader)
                 best_acc = new_best_acc
 
@@ -349,7 +375,7 @@ class Experiment:
             self.net = torch.load(self.load_path, map_location=self.device)
             logging.info(f"\nLoaded model at: {self.load_path}\n {self.net}\n")
 
-        elif self.model_type in ["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "RSEadLIF", "adLIFclamp", "RLIF", "RadLIF", "LIFcomplex","LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlphaNoB","RLIFcomplex1MinAlpha", "LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"]:
+        elif self.model_type in ["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "RSEadLIF", "adLIFclamp", "RLIF", "RadLIF", "LIFcomplex","LIFcomplexBroad", "LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlphaNoB","RLIFcomplex1MinAlpha", "LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"]:
 
             self.net = SNN(
                 input_shape=input_shape,

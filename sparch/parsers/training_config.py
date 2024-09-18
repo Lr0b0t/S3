@@ -14,6 +14,17 @@ import logging
 from distutils.util import strtobool
 
 logger = logging.getLogger(__name__)
+import argparse
+
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
 def add_training_options(parser):
@@ -33,6 +44,13 @@ def add_training_options(parser):
         "--debug",
         action='store_true',
         help="Trigger debug mode with no sweep on wandb use.",
+    )
+    parser.add_argument(
+        "--s4_opt",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use the optimizer setup of S4.",
     )
     parser.add_argument(
         "--gpu_device",
