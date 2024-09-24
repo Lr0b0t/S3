@@ -30,7 +30,7 @@ def add_model_options(parser):
     parser.add_argument(
         "--model_type",
         type=str,
-        choices=["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "RSEadLIF", "RLIF", "RadLIF", "MLP", "RNN", "LiGRU", "GRU","LIFcomplexBroad", "LIFcomplex", "LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlpha", "adLIFclamp", "RLIFcomplex1MinAlphaNoB","LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"],
+        choices=["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "BRF", "ResonateFire", "RSEadLIF", "RLIF", "RadLIF", "MLP", "RNN", "LiGRU", "GRU","LIFcomplexBroad", "LIFcomplex", "LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlpha", "adLIFclamp", "RLIFcomplex1MinAlphaNoB","LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"],
         default="LIF",
         help="Type of ANN or SNN model.",
     )
@@ -48,6 +48,13 @@ def add_model_options(parser):
         type=str2bool,
         default=[False],
         help="Use half reset for LIFcomplex and RLIFcomplex models. True by default",
+    )
+    parser.add_argument(
+        "--recurrent",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use a recurrent version of the model.",
     )
     parser.add_argument(
         "--exp_factor",
@@ -69,6 +76,20 @@ def add_model_options(parser):
         type=str2bool,
         default=[False],
         help="Clamp the alpha real and imaginary parts.",
+    )
+    parser.add_argument(
+        "--alpha_min",
+        type=float,
+        default=[0.1],
+        nargs='+',
+        help="Max dt initializationfor LIFcomplex ",
+    )
+    parser.add_argument(
+        "--alpha_max",
+        type=float,
+        default=[1.0],
+        nargs='+',
+        help="Max dt initializationfor LIFcomplex ",
     )
     parser.add_argument(
         "--complex_reset",
@@ -104,6 +125,13 @@ def add_model_options(parser):
         type=str2bool,
         default=[False],
         help="Use SLAYER surrogate gradient. False by default",
+    )
+    parser.add_argument(
+        "--relu_spike",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use Superspike surrogate gradient. False by default",
     )
     parser.add_argument(
         "--xavier_init",
