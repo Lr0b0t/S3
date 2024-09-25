@@ -25,6 +25,29 @@ def add_model_options(parser):
         help="Type of ANN or SNN model.",
     )
     parser.add_argument(
+        "--s4",
+        type=lambda x: bool(strtobool(str(x))),
+        default=False,
+        help="Whether to include trainable bias with feedforward weights.",
+    )
+
+    parser.add_argument(
+        "--pure_complex",
+        nargs='+',
+        type=lambda x: bool(strtobool(str(x))),
+        default=[False],
+        help="Whether to include trainable bias with feedforward weights.",
+    )
+    
+    parser.add_argument(
+        "--nb_state",
+        nargs='+',
+        type=int,
+        default=[64],
+        help="Number of neurons in all hidden layers.",
+    )
+    
+    parser.add_argument(
         "--lif_feature",
         type=str,
         choices=["logAlpha", "cont", "1-200_1-5", "A0_5", "dtParam", "A0_5Const", "dtLog", "Dt1ms", "Dt1", "alphaConst", "imag", "NoClamp", "B", "dim2"],
@@ -34,24 +57,55 @@ def add_model_options(parser):
     )
     parser.add_argument(
         "--half_reset",
-        nargs='+',
-        type=bool,
-        default=[False],
-        help="Use half reset for LIFcomplex and RLIFcomplex models. True by default",
+        type=lambda x: bool(strtobool(str(x))),
+        default=True,
+        help="Whether to include trainable bias with feedforward weights.",
     )
     parser.add_argument(
         "--no_reset",
         nargs='+',
-        type=bool,
+        type=lambda x: bool(strtobool(str(x))),
         default=[False],
-        help="Use no reset for LIFcomplex and RLIFcomplex models. False by default",
+        help="Whether to include trainable bias with feedforward weights.",
+    )
+    parser.add_argument(
+        "--activation",
+        nargs='+',
+        type=str,
+        choices=["step", "GELU"],
+        default=["GELU"],
+        help="activation",
+    )
+    parser.add_argument(
+        "--mix",
+        nargs='+',
+        type=str,
+        choices=["GLU", "Linear"],
+        default=["GLU"],
+        help="mix",
+    )
+    parser.add_argument(
+        "--reset",
+        nargs='+',
+        type=str,
+        choices=["no_reset", "half_reset"],
+        default=["half_reset"],
+        help="mix",
+    )
+    parser.add_argument(
+        "--bRand",
+        nargs='+',
+        type=str,
+        choices=["Rand", "RandN"],
+        default=["Rand"],
+        help="mix",
     )
     parser.add_argument(
         "--s_GLU",
         nargs='+',
-        type=bool,
+        type=lambda x: bool(strtobool(str(x))),
         default=[False],
-        help="Use no reset for LIFcomplex and RLIFcomplex models. False by default",
+        help="Whether to include trainable bias with feedforward weights.",
     )
     parser.add_argument(
         "--superspike",
@@ -108,18 +162,76 @@ def add_model_options(parser):
         help="Max dt initializationfor LIFcomplex ",
     )
     parser.add_argument(
+        "--thr",
+        type=float,
+        default=[1.0],
+        nargs='+',
+        help="Max dt initializationfor LIFcomplex ",
+    )
+    parser.add_argument(
+        "--c_discr",
+        nargs='+',
+        type=lambda x: bool(strtobool(str(x))),
+        default=[False],
+        help="Whether to include trainable bias with feedforward weights.",
+    )
+    parser.add_argument(
+        "--c_param",
+        nargs='+',
+        type=lambda x: bool(strtobool(str(x))),
+        default=[False],
+        help="Whether to include trainable bias with feedforward weights.",
+    )
+    parser.add_argument(
         "--nb_layers",
         nargs='+',
         type=int,
         default=[3],
         help="Number of layers (including readout layer).",
     )
+
     parser.add_argument(
         "--nb_hiddens",
         nargs='+',
         type=int,
         default=[128],
         help="Number of neurons in all hidden layers.",
+    )
+    parser.add_argument(
+        "--alpha_imag",
+        nargs='+',
+        type=float,
+        default=[3.14],
+        help="Number of neurons in all hidden layers.",
+    )
+    parser.add_argument(
+        "--alpha_range",
+        type=lambda x: bool(strtobool(str(x))),
+        default=False,
+        help="Whether to include trainable bias with feedforward weights.",
+    )
+    parser.add_argument(
+        "--alpha_rand",
+        nargs='+',
+        type=str,
+        choices=["Rand", "RandN", "False"],
+        default=["False"],
+        help="mix",
+    )
+    parser.add_argument(
+        "--alphaRe_rand",
+        nargs='+',
+        type=str,
+        choices=["Rand", "RandN", "False"],
+        default=["False"],
+        help="mix",
+    )
+    parser.add_argument(
+        "--alpha",
+        nargs='+',
+        type=float,
+        default=[0.5],
+        help="mix",
     )
     parser.add_argument(
         "--pdrop",
@@ -131,7 +243,8 @@ def add_model_options(parser):
     parser.add_argument(
         "--normalization",
         type=str,
-        default="batchnorm",
+        nargs='+',
+        default=["batchnorm"],
         help="Type of normalization, Every string different from batchnorm "
         "and layernorm will result in no normalization.",
     )
@@ -139,6 +252,48 @@ def add_model_options(parser):
         "--use_bias",
         type=lambda x: bool(strtobool(str(x))),
         default=False,
+        help="Whether to include trainable bias with feedforward weights.",
+    )
+    parser.add_argument(
+        "--drop2",
+        nargs='+',
+        type=lambda x: bool(strtobool(str(x))),
+        default=[False],
+        help="Whether to include trainable bias with feedforward weights.",
+    )
+    parser.add_argument(
+        "--use_readout_layer",
+        nargs='+',
+        type=lambda x: bool(strtobool(str(x))),
+        default=[False],
+        help="Whether to include trainable bias with feedforward weights.",
+    )
+    parser.add_argument(
+        "--prenorm",
+        nargs='+',
+        type=lambda x: bool(strtobool(str(x))),
+        default=[False],
+        help="Whether to include trainable bias with feedforward weights.",
+    )
+    parser.add_argument(
+        "--premix",
+        nargs='+',
+        type=lambda x: bool(strtobool(str(x))),
+        default=[False],
+        help="Whether to include trainable bias with feedforward weights.",
+    )
+    parser.add_argument(
+        "--residual1",
+        nargs='+',
+        type=lambda x: bool(strtobool(str(x))),
+        default=[True],
+        help="Whether to include trainable bias with feedforward weights.",
+    )
+    parser.add_argument(
+        "--residual2",
+        nargs='+',
+        type=lambda x: bool(strtobool(str(x))),
+        default=[True],
         help="Whether to include trainable bias with feedforward weights.",
     )
     parser.add_argument(

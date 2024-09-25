@@ -37,7 +37,7 @@ def add_training_options(parser):
     parser.add_argument(
         "--gpu_device",
         type=int,
-        default=0,
+        #default=0,
         help="Which gpu device to use.",
     )
     parser.add_argument(
@@ -83,13 +83,13 @@ def add_training_options(parser):
     parser.add_argument(
         "--data_folder",
         type=str,
-        default="data/shd_dataset/",
+        default="~/local/SHD",
         help="Path to dataset folder.",
     )
     parser.add_argument(
         "--log_tofile",
         type=lambda x: bool(strtobool(str(x))),
-        default=True,
+        default=False,
         help="Whether to print experiment log in an dedicated file or "
         "directly inside the terminal.",
     )
@@ -108,26 +108,30 @@ def add_training_options(parser):
     )
     parser.add_argument(
         "--nb_steps",
+        nargs="+",
         type=int,
-        default=100,
+        default=[100],
         help="Number of timesteps.",
     )
     parser.add_argument(
         "--max_time",
+        nargs="+",
         type=float,
-        default=1.4,
+        default=[1.4],
         help="Max time for SHD samples.",
     )
     parser.add_argument(
         "--spatial_bin",
+        nargs="+",
         type=int,
-        default=1,
+        default=[1],
         help="Spatial binning for SHD.",
     )
     parser.add_argument(
         "--time_offset",
+        nargs="+",
         type=int,
-        default=0,
+        default=[0],
         help="Offset in # of timesteps to start counting loss.",
     )
     parser.add_argument(
@@ -154,7 +158,7 @@ def add_training_options(parser):
         "--lr",
         nargs="+",
         type=float,
-        #default=[1e-2],
+        default=[1e-2],
         help="Initial learning rate for training. The default value of 0.01 "
         "is good for SHD and SC, but 0.001 seemed to work better for HD and SC.",
     )

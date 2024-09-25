@@ -96,7 +96,7 @@ def analyze_eigenvalues(model_path, save_dir):
 
 def main():
     # Define the path to the model file
-    model_path1 = './exp/test_exps/shd_adLIF_3lay256_drop0_1_batchnorm_nobias_udir_noreg_lr0_01/checkpoints/best_model.pth'
+    model_path1 = '../../exp/test_exps/shd_adLIF_3lay256_drop0_1_batchnorm_nobias_udir_noreg_lr0_01/checkpoints/best_model.pth'
     
     # Define the directory to save plots
     save_dir = './plots/SHD'

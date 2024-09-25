@@ -28,6 +28,7 @@ from sparch.dataloaders.nonspiking_datasets import load_hd_or_sc
 from sparch.dataloaders.spiking_datasets import load_shd_or_ssc
 from sparch.models.anns import ANN
 from sparch.models.snns import SNN
+from sparch.models.snns import S4Model
 from sparch.parsers.model_config import print_model_options
 from sparch.parsers.training_config import print_training_options
 
@@ -55,11 +56,14 @@ class Experiment:
 
         # New model config
         self.model_type = config.pop('model_type')
+        self.s4 = config.pop('s4')
         self.nb_layers = config.pop('nb_layers')
         self.nb_hiddens = config.pop('nb_hiddens')
+        self.nb_state = config.pop('nb_state')
         self.pdrop = config.pop('pdrop')
         self.normalization = config.pop('normalization')
         self.use_bias = config.pop('use_bias')
+        self.prenorm = config.pop('prenorm')
         self.bidirectional = config.pop('bidirectional')
 
         # self.lif_feature = config.pop('lif_feature')
@@ -94,6 +98,9 @@ class Experiment:
         self.seed = config.pop('seed')
         self.set_seed()
 
+        self.extra_config = config
+
+
         # Initialize logging and output folders
         self.init_exp_folders()
         self.init_logging()
@@ -102,7 +109,7 @@ class Experiment:
         self.device = torch.device(f"cuda:{device}") #torch.device("cuda" if torch.cuda.is_available() else "cpu")
         logging.info(f"\nDevice is set to {self.device}\n")
 
-        self.extra_config = config
+        
 
         # Initialize dataloaders and model
         self.init_dataset()
@@ -204,13 +211,19 @@ class Experiment:
         else:
             outname = self.dataset_name + "_" + self.model_type + "_"
             outname += str(self.nb_layers) + "lay" + str(self.nb_hiddens)
-            outname += "_drop" + str(self.pdrop) + "_" + str(self.normalization)
-            outname += "_bias" if self.use_bias else "_nobias"
-            #outname += "_bdir" if self.bidirectional else "_udir"
-            #outname += "_reg" if self.use_regularizers else "_noreg"
-            #outname += "_lr" + str(self.lr)
-            outname += "_" #+ '_'.join(self.lif_feature.keys())
+            #outname += "_drop" + str(self.pdrop) + "_" + str(self.normalization)
+            #outname += "_bias" if self.use_bias else "_nobias"
+            # outname += "_bdir" if self.bidirectional else "_udir"
+            # outname += "_reg" if self.use_regularizers else "_noreg"
+            # outname += "_lr" + str(self.lr)
+
+            # Add extra parameters from self.extra_config
+            #for key, value in self.extra_config.items():
+            #    outname += f"_{key}{value}"
+
+            outname += "_"  # + '_'.join(self.lif_feature.keys())
             exp_folder = "exp/test_exps/" + outname.replace(".", "_")
+
 
         # # For a new model check that out path does not exist
         # if not self.use_pretrained_model and os.path.exists(exp_folder):
@@ -348,6 +361,22 @@ class Experiment:
         if self.use_pretrained_model:
             self.net = torch.load(self.load_path, map_location=self.device)
             logging.info(f"\nLoaded model at: {self.load_path}\n {self.net}\n")
+        
+        if self.s4:
+            self.net = S4Model(
+            d_input=self.nb_inputs,
+            d_output=self.nb_outputs,
+            d_model=self.nb_hiddens, 
+            d_state=self.nb_state, 
+            n_layers=self.nb_layers,  
+            dropout=self.pdrop,
+            prenorm=self.prenorm,
+            lr = self.lr,
+            batch_size = self.batch_size,
+            normalization=self.normalization,
+            extra_features = self.extra_config
+            ).to(self.device)
+            
 
         elif self.model_type in ["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "RSEadLIF", "adLIFclamp", "RLIF", "RadLIF", "LIFcomplex","LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlphaNoB","RLIFcomplex1MinAlpha", "LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"]:
 
@@ -359,7 +388,6 @@ class Experiment:
                 normalization=self.normalization,
                 use_bias=self.use_bias,
                 bidirectional=self.bidirectional,
-                use_readout_layer=True,
                 extra_features = self.extra_config
             ).to(self.device)
 

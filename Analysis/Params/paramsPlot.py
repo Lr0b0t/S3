@@ -4,15 +4,30 @@ import sys
 import os
 
 # Adjust the path to include the project_root directory
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../sparch')))
 
-from sparch.models.snns import SNN
+from models.snns import SNN
 
 dataset_name = "SHD"
 batch_size = 128
-nb_inputs = 700
+nb_inputs = 700 
 nb_outputs = 20 if dataset_name == "shd" else 35
-model_types = ["LIF", "adLIF", "RLIF","RadLIF", "LIFcomplex", "RLIFcomplex1MinAlpha"]
+model_types = ["LIFcomplex"]
+extra_features = {
+    "thr": 1,               # Threshold value
+    "bRand": "RandN",         # Bias initialization method: "RandN" for normal distribution, "Rand" for uniform
+    "superspike": False,      # Boolean to use SuperSpike spike function
+    "slayer": False,           # Boolean to use SLAYER spike function (only one of superspike or slayer should be True)
+    "xavier_init": False,      # Use Xavier initialization for weights
+    "dt_min": 0.01,          # Minimum value for log(dt)
+    "dt_max": 1,           # Maximum value for log(dt)
+    "c_discr": False,         # Whether to discretize c values (use continuous if False)
+    "c_param": False,          # Whether to use complex-valued c parameters
+    "reset": "half_reset",    # Reset type: "no_reset", "half_reset", or "reset" (1.0)
+    "rst_detach": False,      # Boolean for resetting with gradient detachment
+    "s_GLU": False,
+    "time_offset":0                        # Boolean for using GLU in the output layer
+}
 
 # Function to calculate the number of parameters
 def get_nb_params(input_shape, layer_sizes, neuron_type):
@@ -25,35 +40,47 @@ def get_nb_params(input_shape, layer_sizes, neuron_type):
         use_bias=False,
         bidirectional=False,
         use_readout_layer=True,
+        extra_features=extra_features
     )
-    return sum(p.numel() for p in net.parameters() if p.requires_grad)
-
-# Data for the first plot (number of parameters vs number of layers)
-nb_hiddens = 128
-nb_layers_list = [2, 3, 4, 5, 6, 7]
-nb_params_layers = {model_type: [] for model_type in model_types}
-
-for model_type in model_types:
-    for nb_layers in nb_layers_list:
-        layer_sizes = [nb_hiddens] * (nb_layers - 1) + [nb_outputs]
-        input_shape = (batch_size, None, nb_inputs)
-        nb_params = get_nb_params(input_shape, layer_sizes, model_type)
-        nb_params_layers[model_type].append(nb_params)
+    
+    param_info = {}
+    total_params = 0
+    
+    for name, param in net.named_parameters():
+        if param.requires_grad:
+            param_info[name] = param.numel()  # Store parameter name and its count
+            total_params += param.numel()
+    
+    return param_info, total_params
 
 # Data for the second plot (number of parameters vs number of hidden units)
 nb_layers = 3
-nb_hiddens_list = [64, 128, 256, 512, 1024, 2048, 3072, 4096]
+nb_hiddens_list = [128,  512, ]
 nb_params_hiddens = {model_type: [] for model_type in model_types}
+
+# Assuming 'model_types', 'nb_hiddens_list', 'nb_layers', 'nb_outputs', 'batch_size', 'nb_inputs', and 'nb_params_hiddens' are defined
 
 for model_type in model_types:
     for nb_hiddens in nb_hiddens_list:
+        # Define layer sizes: [hidden_size, ..., hidden_size, output_size]
         layer_sizes = [nb_hiddens] * (nb_layers - 1) + [nb_outputs]
-        input_shape = (batch_size, None, nb_inputs)
-        nb_params = get_nb_params(input_shape, layer_sizes, model_type)
-        nb_params_hiddens[model_type].append(nb_params)
-        print(model_type+' '+str(nb_layers)+' '+str(nb_hiddens)+' '+str(nb_params))
+        input_shape = (batch_size, None, nb_inputs)  # Shape of the input
+
+        # Get the parameter names and count
+        param_info, total_params = get_nb_params(input_shape, layer_sizes, model_type)
+
+        # Store the total parameter count in nb_params_hiddens
+        nb_params_hiddens[model_type].append(total_params)
+
+        # Print the model type, number of layers, hidden size, and total parameters
+        print(f"{model_type} | Layers: {nb_layers} | Hidden units: {nb_hiddens} | Total params: {total_params/1000000}M")
+
+        # Print the names and count of each parameter
+        for param_name, count in param_info.items():
+            print(f"  {param_name}: {count}")
 
 # Plotting
+'''
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12))
 
 # First subplot
@@ -75,3 +102,4 @@ ax2.legend()
 plt.tight_layout()
 plt.savefig("plots/SHD/params_plot.png")
 plt.show()
+'''

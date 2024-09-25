@@ -171,25 +171,7 @@ class SNN(nn.Module):
             num_hidden_layers = self.num_layers - 1
         else:
             num_hidden_layers = self.num_layers
-        # if self.neuron_type == "LIFfeature":
-        #     # Hidden layers
-        #     for i in range(num_hidden_layers):
-        #         snn.append(
-        #             globals()[snn_class](
-        #                 input_size=input_size,
-        #                 hidden_size=self.layer_sizes[i],
-        #                 batch_size=self.batch_size,
-        #                 threshold=self.threshold,
-        #                 dropout=self.dropout,
-        #                 normalization=self.normalization,
-        #                 use_bias=self.use_bias,
-        #                 bidirectional=self.bidirectional,
-        #                 extra_features = self.extra_features
-        #             )
-        #         )
-        #         input_size = self.layer_sizes[i] * (1 + self.bidirectional)
-        # else:
-        #Hidden layers
+            
         for i in range(num_hidden_layers):
             snn.append(
                 globals()[snn_class](
@@ -1669,17 +1651,22 @@ class LIFcomplexLayer(nn.Module):
         extra_features=None
     ):
         super().__init__()
+        self.device = torch.device("cuda")
 
         # Fixed parameters
         self.input_size = int(input_size)
         self.hidden_size = int(hidden_size)
         self.batch_size = batch_size
-        self.threshold = threshold
+        self.threshold = extra_features["thr"]
+        alpha_imag = extra_features["alpha_imag"]
+        alpha_range = extra_features["alpha_range"]
         self.dropout = dropout
         self.normalization = normalization
         self.use_bias = use_bias
         self.bidirectional = bidirectional
         self.batch_size = self.batch_size * (1 + self.bidirectional)
+
+        self.bRand = extra_features["bRand"]
         
         if extra_features['superspike']:
             self.spike_fct = SpikeFunctionSuperSpike.apply
@@ -1689,27 +1676,75 @@ class LIFcomplexLayer(nn.Module):
             self.spike_fct = SpikeFunctionBoxcar.apply
 
         # Trainable parameters
-        self.W = nn.Linear(self.input_size, self.hidden_size, bias=use_bias)
+        
         if extra_features['xavier_init']:
             init.xavier_uniform_(self.W.weight)
-        log_log_alpha = torch.log(0.5 * torch.ones(self.hidden_size))
+        if extra_features.get("alpha", False)!=False:
+            alph = extra_features.get("alpha", False)
+        else:
+            alph = 0.5
+
+        if extra_features.get("alphaRe_rand", False)  =="Rand":
+            alph =  alph * torch.rand(self.hidden_size)
+        elif extra_features.get("alphaRe_rand", False)  =="RandN":
+            alph =  alph * torch.randn(self.hidden_size)
+        else:
+            alph = alph * torch.ones(self.hidden_size)
+        log_log_alpha = torch.log(alph)
         #self.log_log_alpha_lim = [math.log(1 / 200), math.log(1 / 5)]
         dt_min = extra_features["dt_min"]
         dt_max = extra_features["dt_max"]
+        self.c_discr = extra_features["c_discr"]
+        self.c_param = extra_features["c_param"]
+        
+            
+        
         log_dt = torch.rand(self.hidden_size)*(
             math.log(dt_max) - math.log(dt_min)
         ) + math.log(dt_min)
         #nn.init.uniform_(log_log_alpha, self.log_log_alpha_lim[0], self.log_log_alpha_lim[1])
-        alpha_img =  math.pi * torch.ones(self.hidden_size) # torch.arange(self.hidden_size)
+        
+        if alpha_imag == 3.14:
+            alpha_img =  math.pi  ##* torch.arange(self.hidden_size)  
+        elif alpha_imag == 1.57:
+            alpha_img =  math.pi / 2 
+        elif alpha_imag == 0.785:
+            alpha_img =  math.pi / 4 
+        elif alpha_imag == 0.523:
+            alpha_img =  math.pi / 6 
+        elif alpha_imag == 2.09:
+            alpha_img =  math.pi / 1.5 
+        elif alpha_imag == 6.28:
+            alpha_img =  math.pi * 2 
+        else:
+            alpha_img = alpha_imag 
+
+        if alpha_range:
+            alpha_img =  alpha_img /  torch.arange(self.hidden_size)  
+        else:
+            alpha_img =  alpha_img *  torch.ones(self.hidden_size)
+        
+        if extra_features.get("alpha_rand", False)  =="Rand":
+            alpha_img =  alpha_img * torch.rand(self.hidden_size)
+        elif extra_features.get("alpha_rand", False)  =="RandN":
+            alpha_img =  alpha_img * torch.randn(self.hidden_size)
+           
 
         self.register("log_log_alpha", log_log_alpha, lr=0.01)
         self.register("log_dt", log_dt, lr=0.01)
         self.register("alpha_img", alpha_img, lr=0.01)
 
-        self.b = nn.Parameter(torch.rand(self.hidden_size))
-        if extra_features['no_reset']:
+        if self.bRand =="RandN":
+            self.b = nn.Parameter(torch.randn(self.hidden_size))
+        elif self.bRand =="Rand":
+            self.b = nn.Parameter(torch.rand(self.hidden_size))
+        if self.c_param:
+            self.c = nn.Parameter(torch.randn(self.hidden_size,  dtype=torch.cfloat))
+        else:
+            self.c = torch.ones(self.hidden_size)
+        if extra_features['reset'] == 'no_reset':
             self.reset_factor = 0
-        elif extra_features['half_reset']:
+        elif extra_features['reset'] == 'half_reset':
             self.reset_factor = 0.5
         else:
             self.reset_factor = 1.0
@@ -1730,13 +1765,17 @@ class LIFcomplexLayer(nn.Module):
             self.normalize = True
 
         # Initialize dropout
-        self.drop = nn.Dropout(p=dropout)
-
-        self.output_linear = nn.Sequential(
-            nn.Conv1d(self.hidden_size, 2*self.hidden_size, kernel_size=1),
-            nn.GLU(dim=-2),
-        )
         self.s_GLU = extra_features['s_GLU']
+        self.drop = nn.Dropout(p=dropout)
+        if self.s_GLU:
+            self.output_linear = nn.Sequential(
+                nn.Conv1d(self.input_size, 2*self.hidden_size, kernel_size=1),
+                nn.GLU(dim=-2),
+            )
+        else:
+            self.W = nn.Linear(self.input_size, self.hidden_size, bias=use_bias)
+        self.to(self.device)
+        
 
 
 
@@ -1752,7 +1791,12 @@ class LIFcomplexLayer(nn.Module):
             self.batch_size = x.shape[0]
 
         # Feed-forward affine transformations (all steps in parallel)
-        Wx = self.W(x)
+        if not self.s_GLU:
+            Wx = self.W(x)
+        else:
+            Wx = self.output_linear(x.reshape(x.shape[0], x.shape[2], x.shape[1]))
+            Wx = Wx.reshape(x.shape[0], x.shape[1], self.hidden_size)
+
 
         #Wx = self.output_linear(Wx.reshape(Wx.shape[0], Wx.shape[2], Wx.shape[1])).reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
 
@@ -1763,9 +1807,7 @@ class LIFcomplexLayer(nn.Module):
 
         # Compute spikes via neuron dynamics
         s = self._lif_cell(Wx)
-        if self.s_GLU:
-            s = self.output_linear(s.reshape(s.shape[0], s.shape[2], s.shape[1])).reshape(s.shape[0], s.shape[1], s.shape[2])
-
+            
 
         # Concatenate forward and backward sequences on feat dim
         if self.bidirectional:
@@ -1801,6 +1843,10 @@ class LIFcomplexLayer(nn.Module):
         # Bound values of the neuron parameters to plausible ranges
         #log_log__alpha = torch.clamp(self.log_log_alpha, min=self.log_log_alpha_lim[0], max=self.log_log_alpha_lim[1])
         alpha = torch.exp((-torch.exp(self.log_log_alpha)+1j*self.alpha_img)*torch.exp(self.log_dt))
+        if self.c_discr:
+            C = (self.c.to(device) * (alpha-1.) / (-torch.exp(self.log_log_alpha)+1j*self.alpha_img)).to(device)
+        else:
+            C = (self.c).to(device)
         # Loop over time axis
         for t in range(Wx.shape[1]):
 
@@ -1813,7 +1859,7 @@ class LIFcomplexLayer(nn.Module):
             ut = alpha * (ut - self.reset_factor*reset) + self.b * Wx[:, t, :]
 
             # Compute spikes with surrogate gradient
-            st = self.spike_fct(2*ut.real - self.threshold)
+            st = self.spike_fct((2*C*ut).real - self.threshold)
             s.append(st)
 
         return torch.stack(s, dim=1)
@@ -3702,6 +3748,8 @@ class SEReadoutLayer(nn.Module):
         # Initialize dropout
         self.drop = nn.Dropout(p=dropout)
 
+        
+
     def forward(self, x):
 
         # Feed-forward affine transformations (all steps in parallel)
@@ -3735,3 +3783,447 @@ class SEReadoutLayer(nn.Module):
             out = out + F.softmax(ut, dim=1)
 
         return out
+
+class Network_S4(nn.Module):
+    #chnages to Maximes implementation: initialization, alpha clampling 
+    def __init__(
+        self,
+        input_shape,
+        input_size,
+        layer_size,
+        output_size,
+        state_size, 
+        block_num,  
+        dropout=0.0,  
+        lr=0.01
+        ):
+        super().__init__() 
+
+        # Fixed parameters
+        self.input_size = input_size
+        self.batch_size = input_shape[0]
+        self.h = layer_size
+        self.output_size = output_size
+        self.n = state_size
+        self.block_num = block_num
+         
+        self.dropout = dropout 
+
+
+        self.encoder = nn.Linear(input_size, layer_size)
+        
+        self.log_A_reals = nn.ParameterList()
+        self.log_dts = nn.ParameterList()
+        self.Cs = nn.ParameterList() 
+        self.Ds = nn.ParameterList() 
+
+        self.dropouts1 = nn.ModuleList()
+        self.dropouts2 = nn.ModuleList()
+
+        self.activation = nn.GELU()
+
+        self.glu_module = nn.ModuleList([
+            nn.Sequential(
+                nn.Conv1d(self.h, 2 * self.h, kernel_size=1), #(batch_size, layer_size*2, 1)
+                nn.GLU(dim=-2) #(batch_size, layer_size, 1)
+            ) for _ in range(self.block_num)
+        ])
+
+        self.decoder = nn.Linear(layer_size, output_size)
+        self.norm_block = nn.ModuleList()
+
+        dt_min=0.001
+        dt_max=0.1
+        for i in range(self.block_num):
+
+            weight = torch.randn(self.h, self.n)
+            self.Cs.append(nn.Parameter(weight))
+
+            log_A_real = torch.log(0.5 * torch.ones(self.h, self.n))
+            self.register("log_A_real"+str(i), log_A_real, lr)            
+            self.log_A_reals.append(getattr(self, "log_A_real"+str(i)))
+
+            log_dt = torch.rand(self.h) * (math.log(dt_max) - math.log(dt_min)) + math.log(dt_min)
+            self.register("log_dt"+str(i), log_dt, lr)
+            self.log_dts.append(getattr(self, "log_dt"+str(i)))
+
+            self.Ds.append(nn.Parameter(torch.randn(self.h, 1)))
+
+            self.norm_block.append(nn.LayerNorm(self.h))
+
+            self.dropouts1.append(DropoutNd(dropout))
+            self.dropouts2.append(DropoutNd(dropout))
+        self.is_snn = False
+        
+
+            
+
+    def forward(self, x):
+        batch_size, seq_length, _ = x.shape
+
+        # Initialize states
+        #u = [torch.zeros(batch_size,  self.h, self.n, seq_length).to(x.device) for _ in range(self.block_num)]
+        #y = torch.zeros(batch_size, self.h, self.output_size).to(x.device)
+        
+
+        x = self.encoder(x) #(batch_size, L, input_size) --> (b, L, h) 
+        x = x.transpose(1,2) #blh-->bhl
+
+        for l in range(self.block_num):
+            x_in = x.transpose(1,2).unsqueeze(-1).expand(batch_size, seq_length, self.h, self.n) #  b h l --> (b l h) --> b l h 1 --> b l h n 
+            dt = torch.exp(self.log_dts[l]).unsqueeze(-1) #h 1
+            A = torch.exp(dt * -torch.exp(self.log_A_reals[l]))  #h n 
+            u_l = torch.zeros(batch_size,  self.h, self.n, seq_length).to(x.device)
+            for t in range(seq_length-1):
+                u_l[:,:,:,t+1] = A.unsqueeze(0) * u_l[:,:,:,t].clone() + x_in[:, t, :, :] 
+            y = torch.einsum('bhnl,hn->bhl', u_l, self.Cs[l])  + x * self.Ds[l]
+            y = self.activation(y)
+            y = self.dropouts1[l](y)
+            y = self.glu_module[l](y)
+            x = self.dropouts2[l](y) + x
+            x = self.norm_block[l](x.permute(2, 0, 1)) #lbh
+            x = x.permute(1, 2, 0) #lbh --> bhl
+
+        x = x.transpose(-1, -2) #bhl -> blh 
+        out = x.mean(dim=1) # bh 
+        out = self.decoder(out)  # (B, h) -> (B, d_output)
+        
+        '''
+        x = x.transpose(1,2) #b l h --> b h l
+
+        for l in range(self.block_num):
+            x_in = x.transpose(1,2).unsqueeze(-1).expand(batch_size, seq_length, self.h, self.n) #  b h l --> (b l h) --> b l h 1 --> b l h n 
+            dt = torch.exp(self.log_dts[l]).unsqueeze(-1) #h 1
+            A = torch.exp(dt * -torch.exp(self.log_A_reals[l]))  #h n 
+            u_l = torch.zeros(batch_size,  self.h, self.n, seq_length).to(x.device)
+            for t in range(seq_length-1):
+                u_l[:,:,:,t+1] = A.unsqueeze(0) * u_l[:,:,:,t] + x_in[:, t, :, :] 
+            x = torch.einsum('bhnl,hn->bhl', u_l, self.Cs[l])  + x * self.Ds[l] # ?? x: bhl
+            x = self.activation(x)
+            x = self.dropouts1[l](x)
+
+            x = self.glu_module[l](x)
+            x = self.dropouts2[l](x) #+ x
+
+            x = self.norm_block[l](x.permute(2, 0, 1)) #lbh
+
+            x = x.permute(1, 2, 0) #lbh --> bhl
+        
+        z = x.transpose(-1, -2) #bhl -> blh 
+        out = z.mean(dim=1)
+
+        out = self.decoder(out)  # (B, h) -> (B, d_output)
+'''
+        return out, 0
+    
+    def register(self, name, tensor, lr=None):
+        """Register a tensor with a configurable learning rate and 0 weight decay"""
+
+        if lr == 0.0:
+            self.register_buffer(name, tensor)
+        else:
+            self.register_parameter(name, nn.Parameter(tensor))
+
+            optim = {"weight_decay": 0.0}
+            if lr is not None: optim["lr"] = lr
+            setattr(getattr(self, name), "_optim", optim)
+
+
+class DropoutNd(nn.Module):
+    def __init__(self, p: float = 0.5, tie=True, transposed=True):
+        """
+        tie: tie dropout mask across sequence lengths (Dropout1d/2d/3d)
+        """
+        super().__init__()
+        if p < 0 or p >= 1:
+            raise ValueError("dropout probability has to be in [0, 1), " "but got {}".format(p))
+        self.p = p
+        self.tie = tie
+        self.transposed = transposed
+        self.binomial = torch.distributions.binomial.Binomial(probs=1-self.p)
+
+    def forward(self, X):
+        """X: (batch, dim, lengths...)."""
+        if self.training:
+            if not self.transposed: X = rearrange(X, 'b ... d -> b d ...')
+            # binomial = torch.distributions.binomial.Binomial(probs=1-self.p) # This is incredibly slow because of CPU -> GPU copying
+            mask_shape = X.shape[:2] + (1,)*(X.ndim-2) if self.tie else X.shape
+            # mask = self.binomial.sample(mask_shape)
+            mask = torch.rand(*mask_shape, device=X.device) < 1.-self.p
+            X = X * mask * (1.0/(1-self.p))
+            if not self.transposed: X = rearrange(X, 'b d ... -> b ... d')
+            return X
+        return X
+
+
+
+class S4Model(nn.Module):
+
+    def __init__(
+        self,
+        d_input,
+        d_output=10,
+        d_model=256,
+        d_state = 128,
+        n_layers=4,
+        dropout=0.2,
+        prenorm=False,
+        lr = 0.01,
+        batch_size = 0,
+        normalization="batchnorm",
+        extra_features = None
+    ):
+        super().__init__()
+
+        self.device = torch.device("cuda")
+        self.pure_complex = extra_features["pure_complex"]
+        self.extra_features = extra_features
+        self.normalization = normalization
+        dt_min = extra_features["dt_min"]
+        dt_max = extra_features["dt_max"]
+        activation = extra_features["activation"]
+        self.premix = extra_features["premix"]
+        self.mix = extra_features["mix"]
+        self.residual1 = extra_features["residual1"]
+        self.residual2 = extra_features["residual2"]
+        self.drop2 = extra_features["drop2"]
+
+        self.prenorm = prenorm
+
+        # Linear encoder (d_input = 1 for grayscale and 3 for RGB)
+        self.encoder = nn.Linear(d_input, d_model)
+
+        # Stack S4 layers as residual blocks
+        self.s4_layers = nn.ModuleList()
+        self.norms = nn.ModuleList()
+        self.dropouts = nn.ModuleList()
+        for _ in range(n_layers):
+
+            self.s4_layers.append(
+                S4D_orig(d_model, d_state = d_state, dropout=dropout, transposed=True, lr = lr, pure_complex = self.pure_complex, dt_max = dt_max, dt_min = dt_min, activation = activation, premix = self.premix, mix = self.mix, residual1 = self.residual1)
+            )
+            if normalization == "batchnorm":
+                self.norms.append(nn.BatchNorm1d(d_model, momentum=0.05))
+            elif normalization == "layernorm":
+                self.norms.append(nn.LayerNorm(d_model))
+
+            
+            self.dropouts.append(DropoutNd(dropout))
+
+        # Linear decoder
+        if extra_features["use_readout_layer"]:
+            self.decoder = ReadoutLayer(
+                input_size=d_model,
+                hidden_size=d_output,
+                batch_size=batch_size,
+                dropout=dropout,
+                normalization=True,
+                use_bias=False,
+                extra_features=extra_features
+            )
+        else:
+            self.decoder = nn.Linear(d_model, d_output)
+        self.is_snn = False
+
+        if self.mix == "GLU":
+            self.output_linear = nn.Sequential(
+                nn.Conv1d(d_model, 2*d_model, kernel_size=1),
+                nn.GLU(dim=-2),
+            )
+        elif self.mix == "Linear":
+            self.output_linear = nn.Sequential(
+                nn.Linear(d_model, d_model)
+            )
+
+        self.to(self.device)
+        
+
+
+    def forward(self, x):
+        """
+        Input x is shape (B, L, d_input)
+        """
+        x = x.to(self.device)
+        x = self.encoder(x)  # (B, L, d_input) -> (B, L, d_model)
+
+        x = x.transpose(-1, -2)  # (B, L, d_model) -> (B, d_model, L)
+        for i, (layer, norm, dropout) in enumerate(zip(self.s4_layers, self.norms, self.dropouts)):
+            # Each iteration of this loop will map (B, d_model, L) -> (B, d_model, L)
+
+            z = x
+            if not self.premix:
+                if self.mix == "GLU":
+                    z = self.output_linear(z)
+                elif self.mix == "Linear":
+                    z = self.output_linear(z.transpose(1, 2)).transpose(1, 2)
+
+            if self.prenorm:
+                # Prenorm
+                if self.normalization == "batchnorm":
+                    z = z.transpose(-1, -2) # (B, d_model, L) -> (B, L, d_model)
+                    _z = norm(z.reshape(z.shape[0] * z.shape[1], z.shape[2]))
+                    z = _z.reshape(z.shape[0], z.shape[1], z.shape[2]).transpose(-1, -2)
+                elif self.normalization == "layernorm":
+                    z = norm(z.transpose(-1, -2)).transpose(-1, -2)
+
+            # Apply S4 block: we ignore the state input and output
+            z, _ = layer(z)
+
+            # Dropout on the output of the S4 block
+            if self.drop2:
+                z = dropout(z)
+
+            # Residual connection
+            if self.residual2:
+                x = z + x
+            else:
+                x = z
+
+            if not self.prenorm:
+                # Postnorm
+                if self.normalization == "batchnorm":
+                    x = x.transpose(-1, -2) # (B, d_model, L) -> (B, L, d_model)
+                    _x = norm(x.reshape(x.shape[0] * x.shape[1], x.shape[2]))
+                    x = _x.reshape(x.shape[0], x.shape[1], x.shape[2]).transpose(-1, -2)
+                elif self.normalization == "layernorm":
+                    x = norm(x.transpose(-1, -2)).transpose(-1, -2)
+
+        x = x.transpose(-1, -2)
+
+        if self.extra_features["use_readout_layer"] == False:
+            # Pooling: average pooling over the sequence length
+            x = x.mean(dim=1)
+
+        # Decode the outputs
+        self.x = self.decoder(x)  # (B, d_model) -> (B, d_output)
+
+        return self.x, 0
+
+
+class S4DKernel(nn.Module):
+    """Generate convolution kernel from diagonal SSM parameters."""
+
+    def __init__(self, d_model, N=64, dt_min=0.001, dt_max=0.1, lr=None, pure_complex = None):
+        super().__init__()
+        self.device = torch.device("cuda")
+        # Generate dt
+        H = d_model
+        log_dt = torch.rand(H).to(self.device) * (
+            math.log(dt_max) - math.log(dt_min)
+        ) + math.log(dt_min)
+
+        C = torch.randn(H, N // 2, dtype=torch.cfloat).to(self.device)
+
+        self.C = nn.Parameter(torch.view_as_real(C))
+        self.register("log_dt", log_dt, lr)
+
+        log_A_real = torch.log(0.5 * torch.ones(H, N//2)).to(self.device)
+        if pure_complex:
+            A_imag = math.pi * repeat(torch.arange(1,N//2+1), 'n -> h n', h=H).to(self.device)
+        else:
+            A_imag = math.pi * repeat(torch.arange(N//2), 'n -> h n', h=H).to(self.device)
+        self.register("log_A_real", log_A_real, lr)
+        self.register("A_imag", A_imag, lr)
+
+    def forward(self, L):
+        """
+        returns: (..., c, L) where c is number of channels (default 1)
+        """
+
+        # Materialize parameters
+        dt = torch.exp(self.log_dt) # (H)
+        C = torch.view_as_complex(self.C) # (H N)
+        A = -torch.exp(self.log_A_real) + 1j * self.A_imag # (H N)
+
+        # Vandermonde multiplication
+        dtA = A * dt.unsqueeze(-1)  # (H N)
+        K = dtA.unsqueeze(-1) * torch.arange(L, device=self.device) # (H N L)
+        C = C * (torch.exp(dtA)-1.) / A
+        K = 2 * torch.einsum('hn, hnl -> hl', C, torch.exp(K)).real
+
+        return K
+
+    def register(self, name, tensor, lr=None):
+        """Register a tensor with a configurable learning rate and 0 weight decay"""
+
+        if lr == 0.0:
+            self.register_buffer(name, tensor)
+        else:
+            self.register_parameter(name, nn.Parameter(tensor))
+
+            optim = {"weight_decay": 0.0}
+            if lr is not None: optim["lr"] = lr
+            setattr(getattr(self, name), "_optim", optim)
+
+
+class S4D_orig(nn.Module):
+    def __init__(self, d_model, d_state=64, dropout=0.0, transposed=True, lr = None, dt_min = 0, dt_max = 0, activation = "GELU", premix = False, mix = "GLU", residual1 = True, **kernel_args):
+        super().__init__()
+
+        self.h = d_model
+        self.n = d_state
+        self.d_output = self.h
+        self.transposed = transposed
+
+        self.D = nn.Parameter(torch.randn(self.h))
+
+        # SSM Kernel
+        self.kernel = S4DKernel(self.h, N=self.n, dt_min=dt_min, dt_max=dt_max, **kernel_args)
+        self.spike_fct = SpikeFunctionBoxcar.apply
+        self.activation = activation
+        # Pointwise
+        if activation == "GELU":
+            self.activation = nn.GELU()
+        elif activation == "step":
+            self.activation = self.spike_fct
+        # dropout_fn = nn.Dropout2d # NOTE: bugged in PyTorch 1.11
+        dropout_fn = DropoutNd
+        self.dropout = dropout_fn(dropout) if dropout > 0.0 else nn.Identity()
+
+        # position-wise output transform to mix features
+        if mix == "GLU":
+            self.output_linear = nn.Sequential(
+                nn.Conv1d(self.h, 2*self.h, kernel_size=1),
+                nn.GLU(dim=-2),
+            )
+        elif mix == "Linear":
+            self.output_linear = nn.Sequential(
+                nn.Linear(self.h, self.h)
+            )
+
+        self.premix = premix
+        self.mix = mix
+        self.residual1 = residual1
+
+        self.device = torch.device("cuda")
+
+    def forward(self, u, **kwargs): # absorbs return_output and transformer src mask
+        """ Input and output shape (B, H, L) """
+        if not self.transposed: u = u.transpose(-1, -2)
+        L = u.size(-1)
+
+        # Compute SSM Kernel
+        k = self.kernel(L=L) # (H L)
+        
+
+        # Convolution
+        k_f = torch.fft.rfft(k, n=2*L) # (H L)
+        u_f = torch.fft.rfft(u, n=2*L) # (B H L)
+        y = torch.fft.irfft(u_f*k_f, n=2*L)[..., :L] # (B H L)
+
+        # Compute D term in state space equation - essentially a skip connection
+        
+        if self.residual1:
+            y = y + u * self.D.unsqueeze(-1)
+        if self.activation == "step":
+            y = self.activation(y-self.thr)
+        else:
+            y = self.activation(y)
+        y = self.dropout(y)
+        if not self.premix:
+            if self.mix == "GLU":
+                y = self.output_linear(y)
+            elif self.mix == "Linear":
+                y = self.output_linear(y.transpose(1, 2)).transpose(1, 2)
+        if not self.transposed: y = y.transpose(-1, -2)
+        return y, None # Return a dummy state to satisfy this repo's interface, but this can be modified
