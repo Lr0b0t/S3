@@ -155,7 +155,7 @@ class SNN(nn.Module):
 
         self.extra_features = extra_features
 
-        if neuron_type not in ["LIF", "adLIF", "CadLIF", "RSEadLIF", "LIFfeature", "adLIFnoClamp","LIFfeatureDim", "adLIFclamp", "RLIF", "RadLIF", "LIFcomplex", "LIFrealcomplex","ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlphaNoB","RLIFcomplex1MinAlpha", "LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"]:
+        if neuron_type not in ["LIF", "adLIF", "CadLIF", "RSEadLIF", "LIFfeature", "adLIFnoClamp","LIFfeatureDim", "adLIFclamp", "RLIF", "RadLIF", "LIFcomplex", "LIFrealcomplex","ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlphaNoB","RLIFcomplex1MinAlpha", "LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr", "BRF", "ResonateFire"]:
             raise ValueError(f"Invalid neuron type {neuron_type}")
 
         # Init trainable parameters
@@ -1863,6 +1863,312 @@ class LIFcomplexLayer(nn.Module):
             s.append(st)
 
         return torch.stack(s, dim=1)
+
+
+class ResonateFireLayer(nn.Module):
+    """
+    A single layer of Leaky Integrate-and-Fire neurons without layer-wise
+    recurrent connections (LIF).
+
+    Arguments
+    ---------
+    input_size : int
+        Number of features in the input tensors.
+    hidden_size : int
+        Number of output neurons.
+    batch_size : int
+        Batch size of the input tensors.
+    threshold : float
+        Value of spiking threshold (fixed)
+    dropout : float
+        Dropout factor (must be between 0 and 1).
+    normalization : str
+        Type of normalization. Every string different from 'batchnorm'
+        and 'layernorm' will result in no normalization.
+    use_bias : bool
+        If True, additional trainable bias is used with feedforward weights.
+    bidirectional : bool
+        If True, a bidirectional model that scans the sequence both directions
+        is used, which doubles the size of feedforward matrices in layers l>0.
+    """
+
+    def __init__(
+        self,
+        input_size,
+        hidden_size,
+        batch_size,
+        threshold=1.0,
+        dropout=0.0,
+        normalization="batchnorm",
+        use_bias=False,
+        bidirectional=False,
+        extra_features=None
+    ):
+        super().__init__()
+
+        # Fixed parameters
+        self.input_size = int(input_size)
+        self.hidden_size = int(hidden_size)
+        self.batch_size = batch_size
+        self.threshold = threshold
+        self.dropout = dropout
+        self.normalization = normalization
+        self.use_bias = use_bias
+        self.bidirectional = bidirectional
+        self.batch_size = self.batch_size * (1 + self.bidirectional)
+        
+        self.spike_fct = SpikeFunctionBoxcar.apply
+
+        # Trainable parameters
+        self.W = nn.Linear(self.input_size, self.hidden_size, bias=use_bias)
+
+        self.recurrent = extra_features['recurrent']
+        if self.recurrent:
+            self.V = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
+
+        self.dt = 0.004
+
+        self.alpha_real = nn.Parameter(torch.Tensor(self.hidden_size))
+        self.alpha_im = nn.Parameter(torch.Tensor(self.hidden_size))
+        self.threshold = 1.0
+
+        nn.init.uniform_(self.alpha_real, -10.0, -1.0)
+        nn.init.uniform_(self.alpha_im, 5.0, 10.0)
+
+        # Initialize normalinzation
+        self.normalize = False
+        if normalization == "batchnorm":
+            self.norm = nn.BatchNorm1d(self.hidden_size, momentum=0.05)
+            self.normalize = True
+        elif normalization == "layernorm":
+            self.norm = nn.LayerNorm(self.hidden_size)
+            self.normalize = True
+
+        # Initialize dropout
+        self.drop = nn.Dropout(p=dropout)
+
+    def forward(self, x):
+
+        # Concatenate flipped sequence on batch dim
+        if self.bidirectional:
+            x_flip = x.flip(1)
+            x = torch.cat([x, x_flip], dim=0)
+
+        # Change batch size if needed
+        if self.batch_size != x.shape[0]:
+            self.batch_size = x.shape[0]
+
+        # Feed-forward affine transformations (all steps in parallel)
+        Wx = self.W(x)
+
+        #Wx = self.output_linear(Wx.reshape(Wx.shape[0], Wx.shape[2], Wx.shape[1])).reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
+
+        # Apply normalization
+        if self.normalize:
+            _Wx = self.norm(Wx.reshape(Wx.shape[0] * Wx.shape[1], Wx.shape[2]))
+            Wx = _Wx.reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
+
+        # Compute spikes via neuron dynamics
+        s = self._rf_cell(Wx)
+
+        # Concatenate forward and backward sequences on feat dim
+        if self.bidirectional:
+            s_f, s_b = s.chunk(2, dim=0)
+            s_b = s_b.flip(1)
+            s = torch.cat([s_f, s_b], dim=2)
+
+        # Apply dropout
+        s = self.drop(s)
+
+        return s
+
+    def _rf_cell(self, Wx):
+
+        # Initializations
+        device = Wx.device
+        ut = torch.rand(Wx.shape[0], Wx.shape[2], dtype=torch.cfloat).to(device)
+        st = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
+
+        s = []
+
+        alpha_real = torch.clamp(self.alpha_real, max = -0.1)
+
+        if self.recurrent:
+            V = self.V.weight.clone().fill_diagonal_(0)
+
+        # Loop over time axis
+        for t in range(Wx.shape[1]):
+
+            if self.recurrent:
+                I = Wx[:, t, :] + torch.matmul(st, V)
+            else:
+                I = Wx[:, t, :]
+            # Compute membrane potential (LIF)
+            ut = ut + self.dt*((alpha_real + 1j*self.alpha_im)*ut +  I) - st
+
+            # Compute spikes with surrogate gradient
+            st = self.spike_fct(ut.real - self.threshold)
+            s.append(st)
+
+        return torch.stack(s, dim=1)
+
+
+class BRFLayer(nn.Module):
+    """
+    A single layer of Leaky Integrate-and-Fire neurons without layer-wise
+    recurrent connections (LIF).
+
+    Arguments
+    ---------
+    input_size : int
+        Number of features in the input tensors.
+    hidden_size : int
+        Number of output neurons.
+    batch_size : int
+        Batch size of the input tensors.
+    threshold : float
+        Value of spiking threshold (fixed)
+    dropout : float
+        Dropout factor (must be between 0 and 1).
+    normalization : str
+        Type of normalization. Every string different from 'batchnorm'
+        and 'layernorm' will result in no normalization.
+    use_bias : bool
+        If True, additional trainable bias is used with feedforward weights.
+    bidirectional : bool
+        If True, a bidirectional model that scans the sequence both directions
+        is used, which doubles the size of feedforward matrices in layers l>0.
+    """
+
+    def __init__(
+        self,
+        input_size,
+        hidden_size,
+        batch_size,
+        threshold=1.0,
+        dropout=0.0,
+        normalization="batchnorm",
+        use_bias=False,
+        bidirectional=False,
+        extra_features=None
+    ):
+        super().__init__()
+
+        # Fixed parameters
+        self.input_size = int(input_size)
+        self.hidden_size = int(hidden_size)
+        self.batch_size = batch_size
+        self.threshold = threshold
+        self.dropout = dropout
+        self.normalization = normalization
+        self.use_bias = use_bias
+        self.bidirectional = bidirectional
+        self.batch_size = self.batch_size * (1 + self.bidirectional)
+        
+        self.spike_fct = SpikeFunctionBoxcar.apply
+
+        # Trainable parameters
+        self.W = nn.Linear(self.input_size, self.hidden_size, bias=use_bias)
+
+        self.recurrent = extra_features['recurrent']
+        if self.recurrent:
+            self.V = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
+
+        self.dt = 0.004
+
+        self.gamma = 0.9
+        self.alpha_real_off = nn.Parameter(torch.Tensor(self.hidden_size))
+        self.alpha_im = nn.Parameter(torch.Tensor(self.hidden_size))
+        self.threshold = 1.0
+
+        nn.init.uniform_(self.alpha_real_off, 2.0, 3.0)
+        nn.init.uniform_(self.alpha_im, 5.0, 10.0)
+
+        # Initialize normalinzation
+        self.normalize = False
+        if normalization == "batchnorm":
+            self.norm = nn.BatchNorm1d(self.hidden_size, momentum=0.05)
+            self.normalize = True
+        elif normalization == "layernorm":
+            self.norm = nn.LayerNorm(self.hidden_size)
+            self.normalize = True
+
+        # Initialize dropout
+        self.drop = nn.Dropout(p=dropout)
+
+    def forward(self, x):
+
+        # Concatenate flipped sequence on batch dim
+        if self.bidirectional:
+            x_flip = x.flip(1)
+            x = torch.cat([x, x_flip], dim=0)
+
+        # Change batch size if needed
+        if self.batch_size != x.shape[0]:
+            self.batch_size = x.shape[0]
+
+        # Feed-forward affine transformations (all steps in parallel)
+        Wx = self.W(x)
+
+        #Wx = self.output_linear(Wx.reshape(Wx.shape[0], Wx.shape[2], Wx.shape[1])).reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
+
+        # Apply normalization
+        if self.normalize:
+            _Wx = self.norm(Wx.reshape(Wx.shape[0] * Wx.shape[1], Wx.shape[2]))
+            Wx = _Wx.reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
+
+        # Compute spikes via neuron dynamics
+        s = self._rf_cell(Wx)
+
+        # Concatenate forward and backward sequences on feat dim
+        if self.bidirectional:
+            s_f, s_b = s.chunk(2, dim=0)
+            s_b = s_b.flip(1)
+            s = torch.cat([s_f, s_b], dim=2)
+
+        # Apply dropout
+        s = self.drop(s)
+
+        return s
+
+    def _rf_cell(self, Wx):
+
+        # Initializations
+        device = Wx.device
+        ut = torch.rand(Wx.shape[0], Wx.shape[2], dtype=torch.cfloat).to(device)
+        qt = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
+        st = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
+
+        s = []
+
+        p_w = (-1 + torch.sqrt(1-torch.square(self.dt*self.alpha_im)))/self.dt
+
+        if self.recurrent:
+            V = self.V.weight.clone().fill_diagonal_(0)
+
+        # Loop over time axis
+        for t in range(Wx.shape[1]):
+
+            # Compute membrane potential (LIF)
+            b = p_w - self.alpha_real_off - qt
+            if self.recurrent:
+                I = Wx[:, t, :] + torch.matmul(st, V)
+            else:
+                I = Wx[:, t, :]
+            ut = ut + self.dt*((b + 1j*self.alpha_im)*ut + I)
+
+            theta = self.threshold + qt
+
+            # Compute spikes with surrogate gradient
+            st = self.spike_fct(ut.real - theta)
+            s.append(st)
+
+            qt = self.gamma*qt + st
+
+        return torch.stack(s, dim=1)
+
+
+
 
 class LIFrealcomplexLayer(nn.Module):
     """

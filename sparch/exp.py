@@ -222,7 +222,7 @@ class Experiment:
             #    outname += f"_{key}{value}"
 
             outname += "_"  # + '_'.join(self.lif_feature.keys())
-            exp_folder = "exp/test_exps/" + outname.replace(".", "_")
+            exp_folder = "exp/paper_models/" + outname.replace(".", "_")
 
 
         # # For a new model check that out path does not exist
@@ -378,7 +378,7 @@ class Experiment:
             ).to(self.device)
             
 
-        elif self.model_type in ["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "RSEadLIF", "adLIFclamp", "RLIF", "RadLIF", "LIFcomplex","LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlphaNoB","RLIFcomplex1MinAlpha", "LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"]:
+        elif self.model_type in ["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "RSEadLIF", "adLIFclamp", "RLIF", "RadLIF", "LIFcomplex","LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlphaNoB","RLIFcomplex1MinAlpha", "LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr",  "BRF", "ResonateFire"]:
 
             self.net = SNN(
                 input_shape=input_shape,

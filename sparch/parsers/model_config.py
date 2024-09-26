@@ -19,13 +19,20 @@ logger = logging.getLogger(__name__)
 def add_model_options(parser):
     parser.add_argument(
         "--model_type",
+        nargs='+',
         type=str,
-        choices=["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "RSEadLIF", "RLIF", "RadLIF", "MLP", "RNN", "LiGRU", "GRU", "LIFcomplex", "LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlpha", "adLIFclamp", "RLIFcomplex1MinAlphaNoB","LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"],
-        default="LIF",
+        choices=["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "RSEadLIF", "RLIF", "RadLIF", "MLP", "RNN", "LiGRU", "GRU", "LIFcomplex", "LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlpha", "adLIFclamp", "RLIFcomplex1MinAlphaNoB","LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr", "BRF", "ResonateFire"],
+        default=["LIF"],
         help="Type of ANN or SNN model.",
     )
     parser.add_argument(
         "--s4",
+        type=lambda x: bool(strtobool(str(x))),
+        default=False,
+        help="Whether to include trainable bias with feedforward weights.",
+    )
+    parser.add_argument(
+        "--recurrent",
         type=lambda x: bool(strtobool(str(x))),
         default=False,
         help="Whether to include trainable bias with feedforward weights.",
