@@ -185,6 +185,14 @@ def add_training_options(parser):
         "gets decreased.",
     )
     parser.add_argument(
+        "--num_workers",
+        nargs='+',
+        type=int,
+        default=[8],
+        help="Number of epochs without progress before the learning rate "
+        "gets decreased.",
+    )
+    parser.add_argument(
         "--scheduler_factor",
         type=float,
         nargs='+',

@@ -86,6 +86,8 @@ class Experiment:
         self.use_augm = config.pop('use_augm')
         self.s4_opt = config.pop('s4_opt')
 
+        self.workers = config.pop('num_workers')
+
         self.nb_steps = config.pop('nb_steps')
         self.max_time = config.pop('max_time')
         self.spatial_bin = config.pop('spatial_bin')
@@ -294,7 +296,7 @@ class Experiment:
                 max_time = self.max_time,
                 spatial_bin = self.spatial_bin,
                 shuffle=True,
-                workers=8,
+                workers=self.workers,
             )
             self.valid_loader = load_shd_or_ssc(
                 dataset_name=self.dataset_name,
@@ -305,7 +307,7 @@ class Experiment:
                 max_time = self.max_time,
                 spatial_bin = self.spatial_bin,
                 shuffle=False,
-                workers=8,
+                workers=self.workers,
             )
             if self.dataset_name == "ssc":
                 self.test_loader = load_shd_or_ssc(
@@ -316,7 +318,7 @@ class Experiment:
                     nb_steps=self.nb_steps,
                     max_time = self.max_time,
                     shuffle=False,
-                    workers=8,
+                    workers=self.workers,
                 )
             if self.use_augm:
                 logging.warning(
@@ -336,7 +338,7 @@ class Experiment:
                 batch_size=self.batch_size,
                 use_augm=self.use_augm,
                 shuffle=True,
-                workers=8,
+                workers=self.workers,
             )
             self.valid_loader = load_hd_or_sc(
                 dataset_name=self.dataset_name,
@@ -345,7 +347,7 @@ class Experiment:
                 batch_size=self.batch_size,
                 use_augm=self.use_augm,
                 shuffle=False,
-                workers=8,
+                workers=self.workers,
             )
             if self.dataset_name == "sc":
                 self.test_loader = load_hd_or_sc(
@@ -355,7 +357,7 @@ class Experiment:
                     batch_size=self.batch_size,
                     use_augm=self.use_augm,
                     shuffle=False,
-                    workers=8,
+                    workers=self.workers,
                 )
             if self.use_augm:
                 logging.info("\nData augmentation is used\n")
@@ -375,7 +377,7 @@ class Experiment:
             self.net = torch.load(self.load_path, map_location=self.device)
             logging.info(f"\nLoaded model at: {self.load_path}\n {self.net}\n")
 
-        elif self.model_type in ["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "ResonateFire", "BRF", "RSEadLIF", "adLIFclamp", "RLIF", "RadLIF", "LIFcomplex","LIFcomplexBroad", "LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlphaNoB","RLIFcomplex1MinAlpha", "LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"]:
+        elif self.model_type in ["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "ResonateFire", "RAFAblation", "BRF", "RSEadLIF", "adLIFclamp", "RLIF", "RadLIF", "LIFcomplex","LIFcomplexBroad", "LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlphaNoB","RLIFcomplex1MinAlpha", "LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"]:
 
             self.net = SNN(
                 input_shape=input_shape,

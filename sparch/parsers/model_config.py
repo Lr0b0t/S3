@@ -30,7 +30,7 @@ def add_model_options(parser):
     parser.add_argument(
         "--model_type",
         type=str,
-        choices=["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "BRF", "ResonateFire", "RSEadLIF", "RLIF", "RadLIF", "MLP", "RNN", "LiGRU", "GRU","LIFcomplexBroad", "LIFcomplex", "LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlpha", "adLIFclamp", "RLIFcomplex1MinAlphaNoB","LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"],
+        choices=["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "RAFAblation", "BRF", "ResonateFire", "RSEadLIF", "RLIF", "RadLIF", "MLP", "RNN", "LiGRU", "GRU","LIFcomplexBroad", "LIFcomplex", "LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlpha", "adLIFclamp", "RLIFcomplex1MinAlphaNoB","LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"],
         default="LIF",
         help="Type of ANN or SNN model.",
     )
@@ -55,6 +55,41 @@ def add_model_options(parser):
         type=str2bool,
         default=[False],
         help="Use a recurrent version of the model.",
+    )
+    parser.add_argument(
+        "--taylor",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use half reset for LIFcomplex and RLIFcomplex models. True by default",
+    )
+    parser.add_argument(
+        "--continuous",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use half reset for LIFcomplex and RLIFcomplex models. True by default",
+    )
+    parser.add_argument(
+        "--reparam",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use half reset for LIFcomplex and RLIFcomplex models. True by default",
+    )
+    parser.add_argument(
+        "--dt_train",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use half reset for LIFcomplex and RLIFcomplex models. True by default",
+    )
+    parser.add_argument(
+        "--s4_init",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use half reset for LIFcomplex and RLIFcomplex models. True by default",
     )
     parser.add_argument(
         "--exp_factor",
@@ -104,6 +139,13 @@ def add_model_options(parser):
         type=str2bool,
         default=[False],
         help="Use (1 - alpha) to gate input instead of b for LIFcomplex.",
+    )
+    parser.add_argument(
+        "--extra_b",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use half reset for LIFcomplex and RLIFcomplex models. True by default",
     )
     parser.add_argument(
         "--c_sum",
@@ -169,7 +211,7 @@ def add_model_options(parser):
     parser.add_argument(
         "--dt_max",
         type=float,
-        default=[0.7],
+        default=[0.5],
         nargs='+',
         help="Max dt initializationfor LIFcomplex ",
     )
