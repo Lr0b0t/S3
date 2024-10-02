@@ -152,6 +152,7 @@ class SNN(nn.Module):
         self.bidirectional = bidirectional
         self.use_readout_layer = use_readout_layer
         self.is_snn = True
+        self.jaxreadout = extra_features['jaxreadout']
 
         self.extra_features = extra_features
 
@@ -219,6 +220,18 @@ class SNN(nn.Module):
                         use_bias=self.use_bias,
                     )
                 )
+            elif self.jaxreadout:
+                snn.append(
+                    JaxReadoutLayer(
+                        input_size=input_size,
+                        hidden_size=self.layer_sizes[-1],
+                        batch_size=self.batch_size,
+                        dropout=self.dropout,
+                        normalization=self.normalization,
+                        use_bias=self.use_bias,
+                        extra_features=self.extra_features
+                    )
+                )                
             else:
                 snn.append(
                     ReadoutLayer(
@@ -1377,8 +1390,9 @@ class RAFAblationLayer(nn.Module):
         self.taylor = extra_features['taylor']
         self.s4_init = extra_features['s4_init']
         self.dt_train = extra_features['dt_train']
+        self.dt_uniform = extra_features['dt_uniform']
         
-        if self.s4_init:
+        if self.s4_init and self.dt_train:
             alpha_real = torch.log(0.5 * torch.ones(self.hidden_size))
             dt_min = extra_features["dt_min"]
             dt_max = extra_features["dt_max"]
@@ -1389,9 +1403,31 @@ class RAFAblationLayer(nn.Module):
             self.register("alpha_real", alpha_real, lr=0.001)
             self.register("dt", dt, lr=0.001)
             self.register("alpha_im", alpha_im, lr=0.001)
-        elif self.reparam: 
+        elif self.s4_init and self.dt_uniform:
+            alpha_real = torch.log(0.5 * torch.ones(self.hidden_size))
+            dt_min = extra_features["dt_min"]
+            dt_max = extra_features["dt_max"]
+            self.dt = torch.rand(self.hidden_size)*(
+                math.log(dt_max) - math.log(dt_min)
+            ) + math.log(dt_min)
+            alpha_im =  math.pi * torch.ones(self.hidden_size)
+            self.register("alpha_real", alpha_real, lr=0.001)
+            self.register("alpha_im", alpha_im, lr=0.001) 
+        elif self.s4_init:
+            alpha_real = torch.log(0.5 * torch.ones(self.hidden_size))
+            self.dt = torch.tensor([math.log(0.004)], requires_grad=False)
+            alpha_im =  math.pi * torch.ones(self.hidden_size)
+            self.register("alpha_real", alpha_real, lr=0.001)
+            self.register("alpha_im", alpha_im, lr=0.001) 
+        elif self.reparam and self.dt_train: 
             self.dt = nn.Parameter(torch.Tensor(self.hidden_size))
             nn.init.uniform_(self.dt, math.log(0.001), math.log(0.5))
+            self.alpha_real = nn.Parameter(torch.Tensor(self.hidden_size))
+            nn.init.uniform_(self.alpha_real, 0.0, math.log(10.0))
+            self.alpha_im = nn.Parameter(torch.Tensor(self.hidden_size))
+            nn.init.uniform_(self.alpha_im, 5.0, 10.0)
+        elif self.reparam: 
+            self.dt = torch.tensor([math.log(0.004)], requires_grad=False)
             self.alpha_real = nn.Parameter(torch.Tensor(self.hidden_size))
             nn.init.uniform_(self.alpha_real, 0.0, math.log(10.0))
             self.alpha_im = nn.Parameter(torch.Tensor(self.hidden_size))
@@ -1403,12 +1439,18 @@ class RAFAblationLayer(nn.Module):
             nn.init.uniform_(self.alpha_real, 1.0, 10.0)
             self.alpha_im = nn.Parameter(torch.Tensor(self.hidden_size))
             nn.init.uniform_(self.alpha_im, 5.0, 10.0)
-        elif self.continuous or self.taylor:
-            self.dt = 0.004
+        elif self.continuous:
+            self.dt = torch.tensor([math.log(0.004)], requires_grad=False)
             self.alpha_real = nn.Parameter(torch.Tensor(self.hidden_size))
             self.alpha_im = nn.Parameter(torch.Tensor(self.hidden_size))
             nn.init.uniform_(self.alpha_real, 1.0, 10.0)
             nn.init.uniform_(self.alpha_im, 5.0, 10.0)
+        elif self.taylor:
+            self.dt = 0.004
+            self.alpha_real = nn.Parameter(torch.Tensor(self.hidden_size))
+            self.alpha_im = nn.Parameter(torch.Tensor(self.hidden_size))
+            nn.init.uniform_(self.alpha_real, 1.0, 10.0)
+            nn.init.uniform_(self.alpha_im, 5.0, 10.0)            
         else:
             self.dt = 0.004
             self.alpha_real = nn.Parameter(torch.Tensor(self.hidden_size))
@@ -1488,9 +1530,9 @@ class RAFAblationLayer(nn.Module):
             V = self.V.weight.clone().fill_diagonal_(0)
 
         if self.reparam or self.s4_init:
-            alpha = torch.exp((-torch.exp(self.alpha_real)+1j*self.alpha_im)*torch.exp(self.dt))
+            alpha = torch.exp((-torch.exp(self.alpha_real)+1j*self.alpha_im)*torch.exp(self.dt.to(device)))
         elif self.continuous or self.dt_train:
-            dt = torch.clamp(self.dt, min = 0.0004, max=1.0)
+            dt = torch.clamp(self.dt.to(device), min = 0.0004, max=1.0)
             alpha_real = torch.clamp(self.alpha_real, min = 0.1)
             alpha = torch.exp((-alpha_real+1j*self.alpha_im)*dt)
         elif self.taylor:
@@ -2203,6 +2245,9 @@ class LIFcomplexLayer(nn.Module):
 
         # Trainable parameters
         self.W = nn.Linear(self.input_size, self.hidden_size, bias=use_bias)
+        if extra_features['weight_norm']:
+            self.W = nn.utils.weight_norm(self.W)
+
         if extra_features['xavier_init']:
             init.xavier_uniform_(self.W.weight)
         log_log_alpha = torch.log(0.5 * torch.ones(self.hidden_size))
@@ -2259,6 +2304,7 @@ class LIFcomplexLayer(nn.Module):
         # Initialize dropout
         self.drop = nn.Dropout(p=dropout)
 
+        self.zero_init = extra_features['zero_init']
 
 
     def forward(self, x):
@@ -2312,8 +2358,12 @@ class LIFcomplexLayer(nn.Module):
 
         # Initializations
         device = Wx.device
-        ut = torch.rand(Wx.shape[0], Wx.shape[2], dtype=torch.cfloat).to(device)
-        st = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
+        if self.zero_init:
+            ut = torch.zeros(Wx.shape[0], Wx.shape[2], dtype=torch.cfloat).to(device)
+            st = torch.zeros(Wx.shape[0], Wx.shape[2]).to(device)
+        else:   
+            ut = torch.rand(Wx.shape[0], Wx.shape[2], dtype=torch.cfloat).to(device)
+            st = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
         s = []
 
         # Bound values of the neuron parameters to plausible ranges
@@ -4356,13 +4406,18 @@ class ReadoutLayer(nn.Module):
         nn.init.uniform_(self.alpha, self.alpha_lim[0], self.alpha_lim[1])
 
         # Initialize normalization
-        self.normalize = False
-        if normalization == "batchnorm":
-            self.norm = nn.BatchNorm1d(self.hidden_size, momentum=0.05)
-            self.normalize = True
-        elif normalization == "layernorm":
+        if extra_features['layernorm_readout']:
             self.norm = nn.LayerNorm(self.hidden_size)
             self.normalize = True
+        else:
+            self.normalize = False
+            if normalization == "batchnorm":
+                self.norm = nn.BatchNorm1d(self.hidden_size, momentum=0.05)
+                self.normalize = True
+            elif normalization == "layernorm":
+                self.norm = nn.LayerNorm(self.hidden_size)
+                self.normalize = True
+
 
         # Initialize dropout
         self.drop = nn.Dropout(p=dropout)
@@ -4402,6 +4457,121 @@ class ReadoutLayer(nn.Module):
             out = out + F.softmax(ut, dim=1)
 
         return out
+
+class JaxReadoutLayer(nn.Module):
+    """
+    This function implements a single layer of non-spiking Leaky Integrate and
+    Fire (LIF) neurons, where the output consists of a cumulative sum of the
+    membrane potential using a softmax function, instead of spikes.
+
+    Arguments
+    ---------
+    input_size : int
+        Feature dimensionality of the input tensors.
+    hidden_size : int
+        Number of output neurons.
+    batch_size : int
+        Batch size of the input tensors.
+    dropout : float
+        Dropout factor (must be between 0 and 1).
+    normalization : str
+        Type of normalization. Every string different from 'batchnorm'
+        and 'layernorm' will result in no normalization.
+    use_bias : bool
+        If True, additional trainable bias is used with feedforward weights.
+    bidirectional : bool
+        If True, a bidirectional model that scans the sequence both directions
+        is used, which doubles the size of feedforward matrices in layers l>0.
+    """
+
+    def __init__(
+        self,
+        input_size,
+        hidden_size,
+        batch_size,
+        dropout=0.0,
+        normalization="batchnorm",
+        use_bias=False,
+        extra_features=None
+    ):
+        super().__init__()
+
+        # Fixed parameters
+        self.input_size = int(input_size)
+        self.hidden_size = int(hidden_size)
+        self.batch_size = batch_size
+        self.dropout = dropout
+        self.normalization = normalization
+        self.use_bias = use_bias
+
+        self.ro_int = extra_features['ro_int']
+
+        self.alpha = np.exp(-0.001 / extra_features['tau_m'])
+
+        # Trainable parameters
+        self.W = nn.Linear(self.input_size, self.hidden_size, bias=use_bias)
+
+
+        # Initialize normalization
+        if extra_features['layernorm_readout']:
+            self.norm = nn.LayerNorm(self.hidden_size)
+            self.normalize = True
+        else:
+            self.normalize = False
+            if normalization == "batchnorm":
+                self.norm = nn.BatchNorm1d(self.hidden_size, momentum=0.05)
+                self.normalize = True
+            elif normalization == "layernorm":
+                self.norm = nn.LayerNorm(self.hidden_size)
+                self.normalize = True
+
+
+        # Initialize dropout
+        self.drop = nn.Dropout(p=dropout)
+
+        self.time_offset = extra_features['time_offset']
+
+    def forward(self, x):
+
+        # Feed-forward affine transformations (all steps in parallel)
+        Wx = self.W(x)
+
+        # Apply normalization
+        if self.normalize:
+            _Wx = self.norm(Wx.reshape(Wx.shape[0] * Wx.shape[1], Wx.shape[2]))
+            Wx = _Wx.reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
+
+        # Compute membrane potential via non-spiking neuron dynamics
+        out = self._readout_cell(Wx)
+
+        return out
+
+    def _readout_cell(self, Wx):
+
+        # Initializations
+        device = Wx.device
+        ut = torch.zeros(Wx.shape[0], Wx.shape[2]).to(device)
+
+        # Bound values of the neuron parameters to plausible ranges
+        alpha = np.clip(self.alpha, 0.5,1.0)
+
+        u = []
+
+        for t in range(self.time_offset):
+
+            # Compute potential (LIF)
+            ut = alpha * ut + (1 - alpha) * Wx[:, t, :]
+
+        ut = ut.detach()
+        # Loop over time axis
+        for t in range(self.time_offset, Wx.shape[1]):
+
+            # Compute potential (LIF)
+            ut = alpha * ut + (1 - alpha) * Wx[:, t, :]
+            u.append(ut)
+
+        out = u[::-self.ro_int]
+        return torch.stack(out, dim=1)
 
 class SEReadoutLayer(nn.Module):
     """

@@ -53,6 +53,34 @@ def add_training_options(parser):
         help="Use the optimizer setup of S4.",
     )
     parser.add_argument(
+        "--weight_norm",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use the optimizer setup of S4.",
+    )
+    parser.add_argument(
+        "--zero_init",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use the optimizer setup of S4.",
+    )
+    parser.add_argument(
+        "--layernorm_readout",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use the optimizer setup of S4.",
+    )
+    parser.add_argument(
+        "--snnax_optim",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use the optimizer setup of S4.",
+    )
+    parser.add_argument(
         "--gpu_device",
         type=int,
         default=0,
@@ -144,8 +172,9 @@ def add_training_options(parser):
     )
     parser.add_argument(
         "--time_offset",
+        nargs="+",
         type=int,
-        default=0,
+        default=[0],
         help="Offset in # of timesteps to start counting loss.",
     )
     parser.add_argument(
@@ -202,8 +231,9 @@ def add_training_options(parser):
     )
     parser.add_argument(
         "--use_regularizers",
-        type=lambda x: bool(strtobool(str(x))),
-        default=False,
+        nargs='+',
+        type=str2bool,
+        default=[False],
         help="Whether to use regularizers in order to constrain the "
         "firing rates of spiking neurons within a given range.",
     )

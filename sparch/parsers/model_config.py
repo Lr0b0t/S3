@@ -85,6 +85,13 @@ def add_model_options(parser):
         help="Use half reset for LIFcomplex and RLIFcomplex models. True by default",
     )
     parser.add_argument(
+        "--dt_uniform",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use half reset for LIFcomplex and RLIFcomplex models. True by default",
+    )
+    parser.add_argument(
         "--s4_init",
         nargs='+',
         type=str2bool,
@@ -202,11 +209,32 @@ def add_model_options(parser):
         help="Detach reset signal specifically for autograd. True by default",
     )
     parser.add_argument(
+        "--jaxreadout",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Detach reset signal specifically for autograd. True by default",
+    )
+    parser.add_argument(
         "--dt_min",
         type=float,
         default=[0.01],
         nargs='+',
         help="Min dt initialization for LIFcomplex",
+    )
+    parser.add_argument(
+        "--tau_m",
+        type=float,
+        default=[0.10768],
+        nargs='+',
+        help="Decay time constant for Jax readout",
+    )
+    parser.add_argument(
+        "--ro_int",
+        nargs='+',
+        type=int,
+        default=[0],
+        help="Number of neurons in all hidden layers.",
     )
     parser.add_argument(
         "--dt_max",

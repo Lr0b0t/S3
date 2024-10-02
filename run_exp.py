@@ -109,14 +109,14 @@ if __name__ == "__main__":
                     debug_config[arg] = value
 
             elif args.method == "bayes":
-                if isinstance(value, list) and len(value) == 2:  
+                if isinstance(value, list) and len(value) == 2 and not isinstance(value[0], bool):  
                     sweep_config['parameters'][arg] = {
                         'min': value[0],
                         'max': value[1]
                     }
                     debug_config[arg] = value[0]  
 
-                elif isinstance(value, list) and len(value) != 2:  
+                elif isinstance(value, list):  
                     sweep_config['parameters'][arg] = {'values': value}
                     debug_config[arg] = value[0]
                 else:

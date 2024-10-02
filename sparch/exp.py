@@ -22,7 +22,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.lr_scheduler import ReduceLROnPlateau, LambdaLR, CosineAnnealingLR
 
 from sparch.dataloaders.nonspiking_datasets import load_hd_or_sc
 from sparch.dataloaders.spiking_datasets import load_shd_or_ssc
@@ -87,6 +87,7 @@ class Experiment:
         self.s4_opt = config.pop('s4_opt')
 
         self.workers = config.pop('num_workers')
+        self.snnax_optim = config.pop('snnax_optim')
 
         self.nb_steps = config.pop('nb_steps')
         self.max_time = config.pop('max_time')
@@ -132,7 +133,38 @@ class Experiment:
                 self.opt.add_param_group(
                     {"params": params, **hp}
                 )
+        
+        elif self.snnax_optim:
+            self.opt = torch.optim.AdamW(self.net.parameters(), self.lr, 
+                                         weight_decay=0.01)
             
+            num_train_iters = len(self.train_loader)
+            # Number of steps for warmup and total decay steps
+            warmup_steps = int(num_train_iters * 1)
+            total_steps = int(self.nb_epochs * num_train_iters)
+
+            # Linear warmup function
+            def lr_lambda_warmup(step):
+                if step < warmup_steps:
+                    # Warmup from learning_rate / warmup_factor to learning_rate
+                    return (step / max(1, warmup_steps)) * (1 - 1 / 3) + (1 / 3)
+                return 1.0
+
+            # Cosine decay after warmup
+            cosine_scheduler = CosineAnnealingLR(self.opt, T_max=total_steps - warmup_steps, 
+                                                eta_min=self.lr * 0.046538863126080535)
+
+            # LambdaLR for warmup phase
+            warmup_scheduler = LambdaLR(self.opt, lr_lambda=lr_lambda_warmup)
+
+            # Function to step both warmup and cosine scheduler
+            def scheduler_step(step):
+                if step < warmup_steps:
+                    warmup_scheduler.step()  # Use warmup LR schedule
+                else:
+                    cosine_scheduler.step()  # Use cosine LR schedule
+
+            self.scheduler_step = lambda x: scheduler_step(x)
         else:
             self.opt = torch.optim.Adam(self.net.parameters(), self.lr)
 
@@ -172,10 +204,10 @@ class Experiment:
                 self.train_one_epoch(e)
                 best_epoch, new_best_acc = self.valid_one_epoch(e, best_epoch, best_acc)
                 if self.dataset_name=="sc":
-                    if best_acc > 0.92 and new_best_acc>best_acc:
+                    if new_best_acc > 0.92 and new_best_acc>best_acc:
                         self.test_one_epoch(self.test_loader)
                 elif self.dataset_name=="ssc":
-                    if best_acc > 0.74 and new_best_acc>best_acc:
+                    if new_best_acc > 0.74 and new_best_acc>best_acc:
                         self.test_one_epoch(self.test_loader)
                 best_acc = new_best_acc
 
@@ -317,6 +349,7 @@ class Experiment:
                     batch_size=self.batch_size,
                     nb_steps=self.nb_steps,
                     max_time = self.max_time,
+                    spatial_bin = self.spatial_bin,
                     shuffle=False,
                     workers=self.workers,
                 )
@@ -430,6 +463,39 @@ class Experiment:
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
+    def get_acc(self, output, y):
+        if self.extra_config['ro_int']!=0:
+            maxs = torch.argmax(output, dim=-1)
+            pred = []
+            # Iterate over the elements in maxs
+            for m in maxs:
+                most_common = torch.mode(m).values.item()  # Find the mode (most frequent element)
+                pred.append(most_common)
+        
+            pred = torch.tensor(pred).to(y.device)
+            # Calculate the accuracy by comparing predictions with true labels
+            acc = np.mean((y == pred).detach().cpu().numpy())                
+        else:
+            pred = torch.argmax(output, dim=1)
+            acc = np.mean((y == pred).detach().cpu().numpy())
+        
+        return acc
+
+    def get_loss(self, output, y):
+
+        if self.extra_config['ro_int']!=0:
+            # One-hot encode the labels
+            y_one_hot = F.one_hot(y, num_classes=output.size(-1)).float()
+            # Tile the one-hot encoding (equivalent to jnp.tile in JAX)
+            y_one_hot_tiled = y_one_hot.unsqueeze(1).repeat(1, output.size(1), 1)
+            # Calculate the cross-entropy loss (equivalent to jax.nn.log_softmax)
+            loss_val = -(y_one_hot_tiled * F.log_softmax(output, dim=-1)).mean()                
+        else:
+            # Compute loss
+            loss_val = self.loss_fn(output, y)
+        
+        return loss_val
+
     def train_one_epoch(self, e):
         """
         This function trains the model with a single pass over the
@@ -450,8 +516,7 @@ class Experiment:
             # Forward pass through network
             output, firing_rates = self.net(x)
 
-            # Compute loss
-            loss_val = self.loss_fn(output, y)
+            loss_val = self.get_loss(output, y)
             losses.append(loss_val.item())
 
             # Spike activity
@@ -466,11 +531,16 @@ class Experiment:
             # Backpropagate
             self.opt.zero_grad()
             loss_val.backward()
+            if self.snnax_optim:
+                torch.nn.utils.clip_grad_norm_(self.net.parameters(), 0.1)
             self.opt.step()
 
+            if self.snnax_optim:
+                self.scheduler_step(step)
+
             # Compute accuracy with labels
-            pred = torch.argmax(output, dim=1)
-            acc = np.mean((y == pred).detach().cpu().numpy())
+
+            acc = self.get_acc(output, y)
             accs.append(acc)
 
         # Learning rate of whole epoch
@@ -519,12 +589,11 @@ class Experiment:
                 output, firing_rates = self.net(x)
 
                 # Compute loss
-                loss_val = self.loss_fn(output, y)
+                loss_val = self.get_loss(output, y)
                 losses.append(loss_val.item())
 
                 # Compute accuracy with labels
-                pred = torch.argmax(output, dim=1)
-                acc = np.mean((y == pred).detach().cpu().numpy())
+                acc = self.get_acc(output, y)
                 accs.append(acc)
 
                 # Spike activity
@@ -549,7 +618,8 @@ class Experiment:
                 wandb.log({"valid loss":valid_loss, "valid acc":valid_acc, "valid sparsity": 1-epoch_spike_rate}, commit=True)
 
             # Update learning rate
-            self.scheduler.step(valid_acc)
+            if not self.snnax_optim:
+                self.scheduler.step(valid_acc)
 
             # Update best epoch and accuracy
             if valid_acc > best_acc:
@@ -589,12 +659,11 @@ class Experiment:
                 output, firing_rates = self.net(x)
 
                 # Compute loss
-                loss_val = self.loss_fn(output, y)
+                loss_val = self.get_loss(output, y)
                 losses.append(loss_val.item())
 
                 # Compute accuracy with labels
-                pred = torch.argmax(output, dim=1)
-                acc = np.mean((y == pred).detach().cpu().numpy())
+                acc = self.get_acc(output, y)
                 accs.append(acc)
 
                 # Spike activity
