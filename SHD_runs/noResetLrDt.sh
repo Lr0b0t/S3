@@ -1,0 +1,1 @@
+python3 ../run_exp.py --sweep_name LIFcomplex_noReset --method bayes --no_reset True --model_type LIFcomplex --nb_layers 3 --nb_hidden 512 --dataset_name shd --data_folder //Local/dudchenko/SHD/ --save_best False --scheduler_patience 10 --scheduler_factor 0.7 --log_tofile True --gpu_device 3 --pdrop 0.1 --dt_max 0.1 3.0 --dt_min 0.001 0.01 --seed 42 --lr 0.001 0.01

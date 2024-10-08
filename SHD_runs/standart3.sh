@@ -1,0 +1,1 @@
+python3 ../run_exp.py --sweep_name S4_dt_readout_norm_activation --method grid --s4 True --lr 0.01 0.005 --nb_state 64 128 256 --nb_state 2 4 6 32 64 128 --activation step GELU --use_readout_layer True False --pure_complex False True --dt_min 0.001 --dt_max 0.1 --normalization batchnorm layernorm 
