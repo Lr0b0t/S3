@@ -1,4 +1,6 @@
 wandb/
 exp/
 tests_sh/
+SHD_runs/
+runs/
 **__pycache__**

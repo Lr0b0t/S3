@@ -57,6 +57,62 @@ def add_model_options(parser):
         help="Use a recurrent version of the model.",
     )
     parser.add_argument(
+        "--LRU_norm",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use a recurrent version of the model.",
+    )
+    parser.add_argument(
+        "--LRU_b",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use a recurrent version of the model.",
+    )
+    parser.add_argument(
+        "--LRU_re_init",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use a recurrent version of the model.",
+    )
+    parser.add_argument(
+        "--LRU_img_init",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use a recurrent version of the model.",
+    )
+    parser.add_argument(
+        "--LRU_no_dt",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use a recurrent version of the model.",
+    )
+    parser.add_argument(
+        "--LRU_r_max",
+        nargs='+',
+        type=float,
+        default=[1.0],
+        help="Use a recurrent version of the model.",
+    )
+    parser.add_argument(
+        "--LRU_r_min",
+        nargs='+',
+        type=float,
+        default=[0],
+        help="Use a recurrent version of the model.",
+    )
+    parser.add_argument(
+        "--LRU_max_phase",
+        nargs='+',
+        type=float,
+        default=[6.28],
+        help="Use a recurrent version of the model.",
+    )
+    parser.add_argument(
         "--taylor",
         nargs='+',
         type=str2bool,
