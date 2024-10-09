@@ -2248,9 +2248,21 @@ class LIFcomplexLayer(nn.Module):
         if extra_features['weight_norm']:
             self.W = nn.utils.weight_norm(self.W)
 
+        self.LRU_re_init = extra_features.get('LRU_re_init', False)
+        self.LRU_img_init = extra_features.get('LRU_img_init', False)
+        self.LRU_no_dt = extra_features.get('LRU_no_dt', False)
+        self.r_max = extra_features.get('LRU_r_max', 1.0)
+        self.r_min = extra_features.get('LRU_r_min', 0)
+        self.max_phase = extra_features.get('LRU_max_phase', 6.28)
+
         if extra_features['xavier_init']:
             init.xavier_uniform_(self.W.weight)
-        log_log_alpha = torch.log(0.5 * torch.ones(self.hidden_size))
+        if not self.LRU_re_init :
+            log_log_alpha = torch.log(0.5 * torch.ones(self.hidden_size))
+            
+        else:
+            u1 = torch.rand(self.hidden_size)
+            log_log_alpha = torch.log(0.5*torch.log(u1*(self.r_max**2-self.r_min**2)+self.r_min**2))
         #self.log_log_alpha_lim = [math.log(1 / 200), math.log(1 / 5)]
         dt_min = extra_features["dt_min"]
         dt_max = extra_features["dt_max"]
@@ -2258,15 +2270,25 @@ class LIFcomplexLayer(nn.Module):
             math.log(dt_max) - math.log(dt_min)
         ) + math.log(dt_min)
         #nn.init.uniform_(log_log_alpha, self.log_log_alpha_lim[0], self.log_log_alpha_lim[1])
-        alpha_img =  math.pi * torch.ones(self.hidden_size) # torch.arange(self.hidden_size)
-
-        self.register("log_log_alpha", log_log_alpha, lr=0.001)
+        if not self.LRU_img_init :
+            alpha_img =  math.pi * torch.ones(self.hidden_size) # torch.arange(self.hidden_size)
+        else: 
+            u2 = torch.rand(self.hidden_size)
+            alpha_img = torch.log(self.max_phase*u2)
+            
+        
         self.register("log_dt", log_dt, lr=0.001)
+        self.register("log_log_alpha", log_log_alpha, lr=0.001)
         self.register("alpha_img", alpha_img, lr=0.001)
 
-
+        self.LRU_b = extra_features.get('LRU_b', False)
         if not extra_features['no_b']:
-            self.b = nn.Parameter(torch.rand(self.hidden_size))
+            self.b = 1 #placeholder
+            if not self.LRU_b:
+                self.b = nn.Parameter(torch.rand(self.hidden_size))
+            else:
+                self.b_re = nn.Parameter(torch.randn(self.hidden_size)/torch.sqrt(2.0 *torch.tensor( self.hidden_size, dtype=torch.float32)))
+                self.b_img = nn.Parameter(torch.randn(self.hidden_size)/torch.sqrt(2.0 *torch.tensor( self.hidden_size, dtype=torch.float32)))
         else:
             self.b = None
 
@@ -2305,6 +2327,12 @@ class LIFcomplexLayer(nn.Module):
         self.drop = nn.Dropout(p=dropout)
 
         self.zero_init = extra_features['zero_init']
+
+        self.LRU_norm =  extra_features.get('LRU_norm', False)
+        if self.LRU_norm:
+            alpha = torch.exp((-torch.exp(self.log_log_alpha)+1j*self.alpha_img)*torch.exp(self.log_dt))
+            gamma_log = torch.log(torch.sqrt(1-torch.abs(alpha)**2))
+            self.register("gamma_log", gamma_log, lr=0.001)
 
 
     def forward(self, x):
@@ -2368,7 +2396,15 @@ class LIFcomplexLayer(nn.Module):
 
         # Bound values of the neuron parameters to plausible ranges
         #log_log__alpha = torch.clamp(self.log_log_alpha, min=self.log_log_alpha_lim[0], max=self.log_log_alpha_lim[1])
-        alpha = torch.exp((-torch.exp(self.log_log_alpha)+1j*self.alpha_img)*torch.exp(self.log_dt))
+        if self.LRU_img_init :
+            alpha_img = torch.exp(self.alpha_img)
+        else: 
+            alpha_img = self.alpha_img
+
+        alpha_cont = -torch.exp(self.log_log_alpha)+1j*alpha_img
+        if not self.LRU_no_dt:
+            alpha_cont *=torch.exp(self.log_dt)
+        alpha = torch.exp(alpha_cont)
         
         if self.clamp_alpha:
             real_part = alpha.real
@@ -2382,6 +2418,13 @@ class LIFcomplexLayer(nn.Module):
             alpha = clamped_real + 1j * clamped_imag            
         
         if self.b!=None:
+            if self.LRU_b:
+                self.b = self.b_re + 1j * self.b_img
+
+            if self.LRU_norm:
+                self.b = self.b * torch.exp(self.gamma_log)
+            
+
             # Loop over time axis
             for t in range(Wx.shape[1]):
 

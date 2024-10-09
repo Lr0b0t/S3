@@ -1,0 +1,1 @@
+python3 ../run_exp.py --sweep_name complexLIF_spikeGLU --method grid --model_type LIFcomplex --nb_layers 3 --nb_hidden 512 --dataset_name shd --data_folder //Local/dudchenko/SHD/ --save_best False --scheduler_patience 10 --scheduler_factor 0.9 --log_tofile True --gpu_device 1 --lr 0.005 --spatial_bin 5 --time_offset 10 --dt_max 0.5 --dt_min 0.01 --half_reset true --s_GLU true
