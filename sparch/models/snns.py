@@ -156,7 +156,7 @@ class SNN(nn.Module):
 
         self.extra_features = extra_features
 
-        if neuron_type not in ["LIF", "adLIF", "CadLIF", "RAFAblation", "BRF", "ResonateFire", "RSEadLIF", "LIFfeature", "adLIFnoClamp","LIFfeatureDim", "adLIFclamp", "RLIF", "RadLIF", "LIFcomplex", "LIFcomplexBroad", "LIFrealcomplex","ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlphaNoB","RLIFcomplex1MinAlpha", "LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"]:
+        if neuron_type not in ["LIF", "adLIF", "CadLIF", "RAFAblation", "RingInitLIFcomplex", "BRF", "ResonateFire", "RSEadLIF", "LIFfeature", "adLIFnoClamp","LIFfeatureDim", "adLIFclamp", "RLIF", "RadLIF", "LIFcomplex", "LIFcomplexBroad", "LIFrealcomplex","ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlphaNoB","RLIFcomplex1MinAlpha", "LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"]:
             raise ValueError(f"Invalid neuron type {neuron_type}")
 
         # Init trainable parameters
@@ -2412,6 +2412,238 @@ class LIFcomplexLayer(nn.Module):
                 st = self.spike_fct(2*ut.real - self.threshold)
                 s.append(st)            
 
+        return torch.stack(s, dim=1)
+
+class RingInitLIFcomplexLayer(nn.Module):
+    """
+    A single layer of Leaky Integrate-and-Fire neurons without layer-wise
+    recurrent connections (LIF).
+
+    Arguments
+    ---------
+    input_size : int
+        Number of features in the input tensors.
+    hidden_size : int
+        Number of output neurons.
+    batch_size : int
+        Batch size of the input tensors.
+    threshold : float
+        Value of spiking threshold (fixed)
+    dropout : float
+        Dropout factor (must be between 0 and 1).
+    normalization : str
+        Type of normalization. Every string different from 'batchnorm'
+        and 'layernorm' will result in no normalization.
+    use_bias : bool
+        If True, additional trainable bias is used with feedforward weights.
+    bidirectional : bool
+        If True, a bidirectional model that scans the sequence both directions
+        is used, which doubles the size of feedforward matrices in layers l>0.
+    """
+
+    def __init__(
+        self,
+        input_size,
+        hidden_size,
+        batch_size,
+        threshold=1.0,
+        dropout=0.0,
+        normalization="batchnorm",
+        use_bias=False,
+        bidirectional=False,
+        extra_features=None
+    ):
+        super().__init__()
+
+        # Fixed parameters
+        self.input_size = int(input_size)
+        self.hidden_size = int(hidden_size)
+        self.batch_size = batch_size
+        self.threshold = threshold
+        self.dropout = dropout
+        self.normalization = normalization
+        self.use_bias = use_bias
+        self.bidirectional = bidirectional
+        self.batch_size = self.batch_size * (1 + self.bidirectional)
+        
+        if extra_features['superspike']:
+            self.spike_fct = SpikeFunctionSuperSpike.apply
+        elif extra_features['slayer']:
+            self.spike_fct = SpikeFunctionSLAYER.apply
+        else:
+            self.spike_fct = SpikeFunctionBoxcar.apply
+
+        # Trainable parameters
+        self.W = nn.Linear(self.input_size, self.hidden_size, bias=use_bias)
+        if extra_features['weight_norm']:
+            self.W = nn.utils.weight_norm(self.W)
+
+
+        r_max = extra_features['r_max']
+        r_min = extra_features['r_min']
+
+        u1 = torch.rand(self.hidden_size) 
+        u2 = torch.rand(self.hidden_size)
+        nu_log = torch.log(-0.5*torch.log(u1*(r_max**2-r_min**2) + r_min**2)) 
+        theta_log = torch.log(extra_features['max_phase']*u2)
+
+        self.gamma_norm = extra_features['gamma_norm']
+        if self.gamma_norm:
+            alpha = torch.exp((-torch.exp(nu_log)+1j*theta_log))
+            gamma_log = torch.log(torch.sqrt(1-torch.abs(alpha)**2))
+            self.register("gamma_log", gamma_log, lr=0.001)
+
+        self.register("nu_log", nu_log, lr=0.001)
+        self.register("theta_log", theta_log, lr=0.001)
+
+        if not extra_features['no_b']:
+            self.b = nn.Parameter(torch.rand(self.hidden_size))
+        else:
+            self.b = None
+
+        self.clamp_alpha = extra_features['clamp_alpha']
+        self.alpha_min = extra_features['alpha_min']
+        self.alpha_max = extra_features['alpha_max']
+        if self.alpha_min >= self.alpha_max:
+            self.alpha_min = self.alpha_max - 0.1
+
+        if extra_features['no_reset']:
+            self.reset_factor = 0
+        else:
+            if extra_features['complex_reset']:
+                reset_factor = torch.tensor([0.5 - 0.5j], dtype=torch.cfloat)
+                self.register_buffer('reset_factor', reset_factor)
+            elif extra_features['half_reset']:
+                self.reset_factor = 0.5
+            else:
+                self.reset_factor = 1.0
+
+        if extra_features['rst_detach']:
+            self.rst_detach = True
+        else:
+            self.rst_detach = False
+
+        # Initialize normalinzation
+        self.normalize = False
+        if normalization == "batchnorm":
+            self.norm = nn.BatchNorm1d(self.hidden_size, momentum=0.05)
+            self.normalize = True
+        elif normalization == "layernorm":
+            self.norm = nn.LayerNorm(self.hidden_size)
+            self.normalize = True
+
+        # Initialize dropout
+        self.drop = nn.Dropout(p=dropout)
+
+        self.zero_init = extra_features['zero_init']
+
+
+
+    def forward(self, x):
+
+        # Concatenate flipped sequence on batch dim
+        if self.bidirectional:
+            x_flip = x.flip(1)
+            x = torch.cat([x, x_flip], dim=0)
+
+        # Change batch size if needed
+        if self.batch_size != x.shape[0]:
+            self.batch_size = x.shape[0]
+
+        # Feed-forward affine transformations (all steps in parallel)
+        Wx = self.W(x)
+
+        #Wx = self.output_linear(Wx.reshape(Wx.shape[0], Wx.shape[2], Wx.shape[1])).reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
+
+        # Apply normalization
+        if self.normalize:
+            _Wx = self.norm(Wx.reshape(Wx.shape[0] * Wx.shape[1], Wx.shape[2]))
+            Wx = _Wx.reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
+
+        # Compute spikes via neuron dynamics
+        s = self._lif_cell(Wx)
+
+        # Concatenate forward and backward sequences on feat dim
+        if self.bidirectional:
+            s_f, s_b = s.chunk(2, dim=0)
+            s_b = s_b.flip(1)
+            s = torch.cat([s_f, s_b], dim=2)
+
+        # Apply dropout
+        s = self.drop(s)
+
+        return s
+    def register(self, name, tensor, lr=None):
+        """Register a tensor with a configurable learning rate and 0 weight decay"""
+
+        if lr == 0.0:
+            self.register_buffer(name, tensor)
+        else:
+            self.register_parameter(name, nn.Parameter(tensor))
+
+            optim = {"weight_decay": 0.0}
+            if lr is not None: optim["lr"] = lr
+            setattr(getattr(self, name), "_optim", optim)
+
+
+    def _lif_cell(self, Wx):
+
+        # Initializations
+        device = Wx.device
+        if self.zero_init:
+            ut = torch.zeros(Wx.shape[0], Wx.shape[2], dtype=torch.cfloat).to(device)
+            st = torch.zeros(Wx.shape[0], Wx.shape[2]).to(device)
+        else:   
+            ut = torch.rand(Wx.shape[0], Wx.shape[2], dtype=torch.cfloat).to(device)
+            st = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
+        s = []
+
+        # Bound values of the neuron parameters to plausible ranges
+        #log_log__alpha = torch.clamp(self.log_log_alpha, min=self.log_log_alpha_lim[0], max=self.log_log_alpha_lim[1])
+        alpha = torch.exp((-torch.exp(self.nu_log)+1j*self.theta_log))
+        
+        if self.clamp_alpha:
+            real_part = alpha.real
+            imag_part = alpha.imag
+
+            # Clamp the real and imaginary parts
+            clamped_real = torch.clamp(real_part, min=self.alpha_min, max=self.alpha_max)
+            clamped_imag = torch.clamp(imag_part, min=0.0)
+
+            # Recombine the clamped real and imaginary parts
+            alpha = clamped_real + 1j * clamped_imag            
+        
+        # Loop over time axis
+        if self.gamma_norm:
+            gamma = torch.exp(self.gamma_log)
+            for t in range(Wx.shape[1]):
+
+                if self.rst_detach:
+                    reset = st.clone().detach()
+                else: 
+                    reset = st
+
+                # Compute membrane potential (LIF)
+                ut = alpha * (ut - self.reset_factor*reset) + gamma*self.b * Wx[:, t, :]
+
+                # Compute spikes with surrogate gradient
+                st = self.spike_fct(2*ut.real - self.threshold)
+                s.append(st)
+        else:
+            for t in range(Wx.shape[1]):
+
+                if self.rst_detach:
+                    reset = st.clone().detach()
+                else: 
+                    reset = st
+
+                # Compute membrane potential (LIF)
+                ut = alpha * (ut - self.reset_factor*reset) + self.b * Wx[:, t, :]
+
+                # Compute spikes with surrogate gradient
+                st = self.spike_fct(2*ut.real - self.threshold)
+                s.append(st)
+        
         return torch.stack(s, dim=1)
 
 class LIFcomplexBroadLayer(nn.Module):
