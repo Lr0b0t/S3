@@ -2262,7 +2262,7 @@ class LIFcomplexLayer(nn.Module):
             
         else:
             u1 = torch.rand(self.hidden_size)
-            log_log_alpha = torch.log(0.5*torch.log(u1*(self.r_max**2-self.r_min**2)+self.r_min**2))
+            log_log_alpha = torch.log(-0.5*torch.log(u1*(self.r_max**2-self.r_min**2)+self.r_min**2))
         #self.log_log_alpha_lim = [math.log(1 / 200), math.log(1 / 5)]
         dt_min = extra_features["dt_min"]
         dt_max = extra_features["dt_max"]
