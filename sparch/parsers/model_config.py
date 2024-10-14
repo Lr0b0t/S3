@@ -35,6 +35,20 @@ def add_model_options(parser):
         help="Type of ANN or SNN model.",
     )
     parser.add_argument(
+        "--input_layer_type",
+        type=str,
+        choices=["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "RingInitLIFcomplex", "RAFAblation", "BRF", "ResonateFire", "RSEadLIF", "RLIF", "RadLIF", "MLP", "RNN", "LiGRU", "GRU","LIFcomplexBroad", "LIFcomplex", "LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlpha", "adLIFclamp", "RLIFcomplex1MinAlphaNoB","LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"],
+        default="LIF",
+        help="Type of ANN or SNN model.",
+    )
+    parser.add_argument(
+        "--use_input_layer",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Use half reset for LIFcomplex and RLIFcomplex models. True by default",
+    )
+    parser.add_argument(
         "--lif_feature",
         type=str,
         choices=["logAlpha", "cont", "1-200_1-5", "A0_5", "dtParam", "A0_5Const", "dtLog", "Dt1ms", "Dt1", "alphaConst", "imag", "NoClamp", "B", "dim2"],
@@ -322,6 +336,107 @@ def add_model_options(parser):
     )
     parser.add_argument(
         "--dt_max",
+        type=float,
+        default=[0.5],
+        nargs='+',
+        help="Max dt initializationfor LIFcomplex ",
+    )
+    parser.add_argument(
+        "--alpha_img_pi_rat_in",
+        type=float,
+        default=[1],
+        nargs='+',
+        help="Max dt initializationfor LIFcomplex ",
+    )
+    parser.add_argument(
+        "--alpha_img_pi_rat",
+        type=float,
+        default=[1],
+        nargs='+',
+        help="",
+    )
+    parser.add_argument(
+        "--dt_max_in",
+        type=float,
+        default=[0.5],
+        nargs='+',
+        help="Max dt initializationfor LIFcomplex ",
+    )
+    parser.add_argument(
+        "--dt_min_in",
+        type=float,
+        default=[0.01],
+        nargs='+',
+        help="Max dt initializationfor LIFcomplex ",
+    )
+    parser.add_argument(
+        "--alpha_range_max_in",
+        type=float,
+        default=[0.5],
+        nargs='+',
+        help="Max dt initializationfor LIFcomplex ",
+    )
+    parser.add_argument(
+        "--alpha_range_min_in",
+        type=float,
+        default=[0.5],
+        nargs='+',
+        help="Max dt initializationfor LIFcomplex ",
+    )
+    parser.add_argument(
+        "--alpha_rand_in",
+        type=str,
+        nargs='+',
+        choices=["Rand", "RandN"],
+        default="Rand",
+        help="Type of ANN or SNN model.",
+    )
+    parser.add_argument(
+        "--alpha_rand",
+        type=str,
+        nargs='+',
+        choices=["Rand", "RandN"],
+        default="Rand",
+        help="Type of ANN or SNN model.",
+    )
+    parser.add_argument(
+        "--alpha_range_max",
+        type=float,
+        default=[0.5],
+        nargs='+',
+        help="Max dt initializationfor LIFcomplex ",
+    )
+    parser.add_argument(
+        "--alpha_range_min",
+        type=float,
+        default=[0.5],
+        nargs='+',
+        help="Max dt initializationfor LIFcomplex ",
+    )
+    parser.add_argument(
+        "--alpha_in",
+        type=float,
+        default=[0.5],
+        nargs='+',
+        help="Max dt initializationfor LIFcomplex ",
+    )
+    parser.add_argument(
+        "--alpha_range_in",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Detach reset signal specifically for autograd. True by default",
+    ) 
+    parser.add_argument(
+        "--alpha_range",
+        nargs='+',
+        type=str2bool,
+        default=[False],
+        help="Detach reset signal specifically for autograd. True by default",
+    ) 
+    
+    parser.add_argument(
+        "--alpha",
         type=float,
         default=[0.5],
         nargs='+',
