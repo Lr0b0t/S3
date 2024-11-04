@@ -97,7 +97,7 @@ class Experiment:
 
         self.seed = config.pop('seed')
         self.set_seed()
-
+        self.extra_config = config
         # Initialize logging and output folders
         self.init_exp_folders()
         self.init_logging()
@@ -106,7 +106,7 @@ class Experiment:
         self.device = torch.device(f"cuda:{device}") #torch.device("cuda" if torch.cuda.is_available() else "cpu")
         logging.info(f"\nDevice is set to {self.device}\n")
 
-        self.extra_config = config
+        
 
         # Initialize dataloaders and model
         self.init_dataset()
@@ -266,6 +266,7 @@ class Experiment:
             outname += str(self.nb_layers) + "lay" + str(self.nb_hiddens)
             outname += "_drop" + str(self.pdrop) + "_" + str(self.normalization)
             outname += "_bias" if self.use_bias else "_nobias"
+            outname += "_in"+self.extra_config.get('input_layer_type', False) if self.extra_config.get('use_input_layer', False)  else ""
             #outname += "_bdir" if self.bidirectional else "_udir"
             #outname += "_reg" if self.use_regularizers else "_noreg"
             #outname += "_lr" + str(self.lr)

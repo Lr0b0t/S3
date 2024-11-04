@@ -199,31 +199,46 @@ class SNN(nn.Module):
         snn = nn.ModuleList([])
         input_size = self.input_size
         snn_class = self.neuron_type + "Layer"
+        input_class = self.extra_features.get('input_layer_type', False) + "Layer"
+        
 
         if self.use_readout_layer:
             num_hidden_layers = self.num_layers - 1
         else:
             num_hidden_layers = self.num_layers
-        # if self.neuron_type == "LIFfeature":
-        #     # Hidden layers
-        #     for i in range(num_hidden_layers):
-        #         snn.append(
-        #             globals()[snn_class](
-        #                 input_size=input_size,
-        #                 hidden_size=self.layer_sizes[i],
-        #                 batch_size=self.batch_size,
-        #                 threshold=self.threshold,
-        #                 dropout=self.dropout,
-        #                 normalization=self.normalization,
-        #                 use_bias=self.use_bias,
-        #                 bidirectional=self.bidirectional,
-        #                 extra_features = self.extra_features
-        #             )
-        #         )
-        #         input_size = self.layer_sizes[i] * (1 + self.bidirectional)
-        # else:
+
         #Hidden layers
-        for i in range(num_hidden_layers):
+        if self.extra_features.get('use_input_layer', False):
+            extra_in = self.extra_features
+            extra_in["dt_min"] = extra_in.get('dt_min_in', extra_in.get("dt_min"))
+            extra_in["dt_max"] = extra_in.get('dt_max_in', extra_in.get("dt_max"))
+            extra_in["alpha"] = extra_in.get('alpha_in', None)
+            extra_in["alpha_range"] = extra_in.get('alpha_range_in', None)
+            extra_in["alpha_range_min"] = extra_in.get('alpha_range_min_in', None)
+            extra_in["alpha_range_max"] = extra_in.get('alpha_range_max_in', None)
+            extra_in["alpha_img_pi_rat"] = extra_in.get('alpha_img_pi_rat_in', None)
+            extra_in["alpha_rand"] = extra_in.get('alpha_rand_in', None)
+
+            
+            snn.append(
+                globals()[input_class](
+                    input_size=input_size,
+                    hidden_size=self.layer_sizes[0],
+                    batch_size=self.batch_size,
+                    threshold=self.threshold,
+                    dropout=self.dropout,
+                    normalization=self.normalization,
+                    use_bias=self.use_bias,
+                    bidirectional=self.bidirectional,
+                    extra_features = extra_in
+                )
+            )
+            input_size = self.layer_sizes[0] * (1 + self.bidirectional)
+            layer_range = range(1,num_hidden_layers)
+        else:
+            layer_range = range(0,num_hidden_layers)
+        
+        for i in layer_range:
             snn.append(
                 globals()[snn_class](
                     input_size=input_size,
@@ -2312,23 +2327,38 @@ class LIFcomplexLayer(nn.Module):
         self.r_min = extra_features.get('LRU_r_min', 0)
         self.max_phase = extra_features.get('LRU_max_phase', 6.28)
 
+        alpha = extra_features.get('alpha', 0.5)
+        alpha_range = extra_features.get('alpha_range', False)
+        alpha_range_max = extra_features.get('alpha_range_max', False)
+        alpha_range_min = extra_features.get('alpha_range_min', False)
+        alpha_rand = extra_features.get('alpha_rand', False)
+
         if extra_features['xavier_init']:
             init.xavier_uniform_(self.W.weight)
+
         if not self.LRU_re_init :
-            log_log_alpha = torch.log(0.5 * torch.ones(self.hidden_size))
+            log_log_alpha = torch.log(alpha * torch.ones(self.hidden_size))
             
         else:
             u1 = torch.rand(self.hidden_size)
-            log_log_alpha = torch.log(0.5*torch.log(u1*(self.r_max**2-self.r_min**2)+self.r_min**2))
+            log_log_alpha = torch.log(-alpha*torch.log(u1*(self.r_max**2-self.r_min**2)+self.r_min**2))
+        if alpha_range:
+            if alpha_rand == "Rand":
+                log_log_alpha = torch.rand(self.hidden_size)*(math.log(alpha_range_max) - math.log(alpha_range_min)) + math.log(alpha_range_min)
+            elif alpha_rand == "RandN":
+                log_log_alpha = torch.randn(self.hidden_size)*(math.log(alpha_range_max) - math.log(alpha_range_min)) + math.log(alpha_range_min)
+
         #self.log_log_alpha_lim = [math.log(1 / 200), math.log(1 / 5)]
         dt_min = extra_features["dt_min"]
         dt_max = extra_features["dt_max"]
+        dt_max = extra_features["dt_max"]
+        alpha_img_pi_rat = extra_features.get('alpha_img_pi_rat', 1) 
         log_dt = torch.rand(self.hidden_size)*(
             math.log(dt_max) - math.log(dt_min)
         ) + math.log(dt_min)
         #nn.init.uniform_(log_log_alpha, self.log_log_alpha_lim[0], self.log_log_alpha_lim[1])
         if not self.LRU_img_init :
-            alpha_img =  math.pi * torch.ones(self.hidden_size) # torch.arange(self.hidden_size)
+            alpha_img =  math.pi * alpha_img_pi_rat * torch.ones(self.hidden_size) # torch.arange(self.hidden_size)
         else: 
             u2 = torch.rand(self.hidden_size)
             alpha_img = torch.log(self.max_phase*u2)
@@ -2482,11 +2512,12 @@ class LIFcomplexLayer(nn.Module):
             alpha = clamped_real + 1j * clamped_imag            
         
         if self.b!=None:
+            b = self.b 
             if self.LRU_b:
-                self.b = self.b_re + 1j * self.b_img
+                b = self.b_re + 1j * self.b_img
 
             if self.LRU_norm:
-                self.b = self.b * torch.exp(self.gamma_log)
+                b = b * torch.exp(self.gamma_log)
             
 
             # Loop over time axis
@@ -2500,7 +2531,7 @@ class LIFcomplexLayer(nn.Module):
                         reset = st
 
                     # Compute membrane potential (LIF)
-                    ut =  gated_alpha[:,t,:]* (ut - self.reset_factor*reset) + self.b * Wx[:, t, :]
+                    ut =  gated_alpha[:,t,:]* (ut - self.reset_factor*reset) + b * Wx[:, t, :]
 
                     # Compute spikes with surrogate gradient
                     st = self.spike_fct(2*ut.real - self.threshold)
@@ -2514,7 +2545,7 @@ class LIFcomplexLayer(nn.Module):
                         reset = st
 
                     # Compute membrane potential (LIF)
-                    ut = alpha * (ut - self.reset_factor*reset) + self.b * Wx[:, t, :]
+                    ut = alpha * (ut - self.reset_factor*reset) + b * Wx[:, t, :]
 
                     # Compute spikes with surrogate gradient
                     st = self.spike_fct(2*ut.real - self.threshold)
