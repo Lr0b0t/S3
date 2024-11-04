@@ -50,6 +50,15 @@ def add_model_options(parser):
         help="Use half reset for LIFcomplex and RLIFcomplex models. True by default",
     )
     parser.add_argument(
+        "--gating",
+        type=str,
+        choices=["mamba", "mamba_dtscalar", "gla", "mLSTM", "hgrn", "rwkv"],
+        default=None,
+        nargs='+',
+        help="Gating Mode",
+    )
+
+    parser.add_argument(
         "--recurrent",
         nargs='+',
         type=str2bool,

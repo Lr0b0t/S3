@@ -82,6 +82,38 @@ class SpikeFunctionSLAYER(torch.autograd.Function):
 
 #     return reset
 
+def gating_function(gate, alpha_exp, input_size, gate_size, gate_bias=False, extra=None):
+    gamma = None
+    if 'mamba' in gate:
+        if gate == 'mamba':
+            Wgate = nn.Linear(input_size, gate_size, bias=gate_bias)
+        elif gate == 'mamba_dtscalar':
+            Wgate = nn.Linear(input_size, 1, bias=gate_bias)        
+        if alpha_exp:
+            gate = lambda x,alpha : torch.exp(-F.softplus(Wgate(x))*alpha) 
+        else:
+            gate = lambda x,alpha : torch.exp(-F.softplus(Wgate(x)))*alpha
+    else:
+        Wgate = nn.Linear(input_size, gate_size, bias=gate_bias)
+        if gate == "gla":
+            input_gate = lambda x : torch.pow(torch.sigmoid(Wgate(x)), 1/16) #extra['tau']
+        elif gate == 'mLSTM':
+            input_gate = lambda x : torch.sigmoid(Wgate(x))
+        elif gate == 'hgrn':
+            gamma = nn.Parameter(torch.rand(gate_size))
+            nn.init.uniform_(gamma, a=0.0, b=1.0)
+            def input_gate(x):
+                gamma_eff = torch.clamp(gamma, 0, 1)
+                return gamma_eff + (1-gamma_eff) * torch.sigmoid(Wgate(x))    
+        elif gate == 'rwkv':
+            input_gate = lambda x : torch.exp(-torch.exp(Wgate(x)))     
+        if alpha_exp:
+            gate = lambda x,alpha : input_gate(x)*torch.exp(-alpha) 
+        else:
+            gate = lambda x,alpha : input_gate(x)*alpha           
+    return gate, Wgate, gamma 
+
+
 class SNN(nn.Module):
     """
     A multi-layered Spiking Neural Network (SNN).
@@ -1098,6 +1130,12 @@ class CadLIFLayer(nn.Module):
         else:
             self.rst_detach = False
 
+        self.gate = False
+        if extra_features['gating']:
+            self.alpha_gate_fn, self.W_alpha_gate, self.alpha_gamma = gating_function(extra_features['gating'], False, self.hidden_size, self.hidden_size)
+            self.beta_gate_fn, self.W_beta_gate, self.beta_gamma = gating_function(extra_features['gating'], False, self.hidden_size, self.hidden_size)            
+            self.gate = True
+
     def forward(self, x):
 
         # Concatenate flipped sequence on batch dim
@@ -1146,21 +1184,40 @@ class CadLIFLayer(nn.Module):
         a = torch.clamp(self.a, min=self.a_lim[0], max=self.a_lim[1])
         b = torch.clamp(self.b, min=self.b_lim[0], max=self.b_lim[1])
 
-        # Loop over time axis
-        for t in range(Wx.shape[1]):
+        if self.gate:
+            # Loop over time axis
+            gated_beta = self.beta_gate_fn(Wx, beta)
+            gated_alpha = self.alpha_gate_fn(Wx, alpha)
+            for t in range(Wx.shape[1]):
 
-            # if self.rst_detach:
-            #     reset = st.clone().detach()
-            # else:
-            #     reset = st
+                # if self.rst_detach:
+                #     reset = st.clone().detach()
+                # else:
+                #     reset = st
 
-            # Compute potential (adLIF)
-            wt = beta * wt + a * ut + b * st
-            ut = alpha * (ut - st) + (1 - alpha)* (Wx[:, t, :] - wt)
+                # Compute potential (adLIF)
+                wt = gated_beta[:,t,:] * wt + a * ut + b * st
+                ut =  gated_alpha[:,t,:]* (ut - st) + (1 - gated_alpha[:,t,:])* (Wx[:, t, :] - wt)
 
-            # Compute spikes with surrogate gradient
-            st = self.spike_fct(ut - self.threshold)
-            s.append(st)
+                # Compute spikes with surrogate gradient
+                st = self.spike_fct(ut - self.threshold)
+                s.append(st)
+        else:
+            # Loop over time axis
+            for t in range(Wx.shape[1]):
+
+                # if self.rst_detach:
+                #     reset = st.clone().detach()
+                # else:
+                #     reset = st
+
+                # Compute potential (adLIF)
+                wt = beta * wt + a * ut + b * st
+                ut = alpha * (ut - st) + (1 - alpha)* (Wx[:, t, :] - wt)
+
+                # Compute spikes with surrogate gradient
+                st = self.spike_fct(ut - self.threshold)
+                s.append(st)
 
         return torch.stack(s, dim=1)
 
@@ -2334,6 +2391,10 @@ class LIFcomplexLayer(nn.Module):
             gamma_log = torch.log(torch.sqrt(1-torch.abs(alpha)**2))
             self.register("gamma_log", gamma_log, lr=0.001)
 
+        self.gate = False
+        if extra_features['gating']:
+            self.gate_fn, self.W_gate, self.gamma = gating_function(extra_features['gating'], True, self.hidden_size, self.hidden_size)
+            self.gate = True
 
     def forward(self, x):
 
@@ -2402,6 +2463,9 @@ class LIFcomplexLayer(nn.Module):
             alpha_img = self.alpha_img
 
         alpha_cont = -torch.exp(self.log_log_alpha)+1j*alpha_img
+
+        if self.gate:
+            alpha_for_gate = torch.exp(self.log_log_alpha)-1j*alpha_img
         if not self.LRU_no_dt:
             alpha_cont *=torch.exp(self.log_dt)
         alpha = torch.exp(alpha_cont)
@@ -2426,19 +2490,35 @@ class LIFcomplexLayer(nn.Module):
             
 
             # Loop over time axis
-            for t in range(Wx.shape[1]):
+            if self.gate:
+                gated_alpha = self.gate_fn(Wx, alpha_for_gate)
+                for t in range(Wx.shape[1]):
 
-                if self.rst_detach:
-                    reset = st.clone().detach()
-                else: 
-                    reset = st
+                    if self.rst_detach:
+                        reset = st.clone().detach()
+                    else: 
+                        reset = st
 
-                # Compute membrane potential (LIF)
-                ut = alpha * (ut - self.reset_factor*reset) + self.b * Wx[:, t, :]
+                    # Compute membrane potential (LIF)
+                    ut =  gated_alpha[:,t,:]* (ut - self.reset_factor*reset) + self.b * Wx[:, t, :]
 
-                # Compute spikes with surrogate gradient
-                st = self.spike_fct(2*ut.real - self.threshold)
-                s.append(st)
+                    # Compute spikes with surrogate gradient
+                    st = self.spike_fct(2*ut.real - self.threshold)
+                    s.append(st)                
+            else:
+                for t in range(Wx.shape[1]):
+
+                    if self.rst_detach:
+                        reset = st.clone().detach()
+                    else: 
+                        reset = st
+
+                    # Compute membrane potential (LIF)
+                    ut = alpha * (ut - self.reset_factor*reset) + self.b * Wx[:, t, :]
+
+                    # Compute spikes with surrogate gradient
+                    st = self.spike_fct(2*ut.real - self.threshold)
+                    s.append(st)
         else:
             # Loop over time axis
             for t in range(Wx.shape[1]):
