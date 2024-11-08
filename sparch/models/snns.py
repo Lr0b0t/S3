@@ -1396,6 +1396,255 @@ class RSEadLIFLayer(nn.Module):
 
         return torch.stack(s, dim=1)
 
+class CadLIFAblationLayer(nn.Module):
+    """
+    A single layer of Leaky Integrate-and-Fire neurons without layer-wise
+    recurrent connections (LIF).
+
+    Arguments
+    ---------
+    input_size : int
+        Number of features in the input tensors.
+    hidden_size : int
+        Number of output neurons.
+    batch_size : int
+        Batch size of the input tensors.
+    threshold : float
+        Value of spiking threshold (fixed)
+    dropout : float
+        Dropout factor (must be between 0 and 1).
+    normalization : str
+        Type of normalization. Every string different from 'batchnorm'
+        and 'layernorm' will result in no normalization.
+    use_bias : bool
+        If True, additional trainable bias is used with feedforward weights.
+    bidirectional : bool
+        If True, a bidirectional model that scans the sequence both directions
+        is used, which doubles the size of feedforward matrices in layers l>0.
+    """
+
+    def __init__(
+        self,
+        input_size,
+        hidden_size,
+        batch_size,
+        threshold=1.0,
+        dropout=0.0,
+        normalization="batchnorm",
+        use_bias=False,
+        bidirectional=False,
+        extra_features=None
+    ):
+        super().__init__()
+
+        # Fixed parameters
+        self.input_size = int(input_size)
+        self.hidden_size = int(hidden_size)
+        self.batch_size = batch_size
+        self.threshold = threshold
+        self.dropout = dropout
+        self.normalization = normalization
+        self.use_bias = use_bias
+        self.bidirectional = bidirectional
+        self.batch_size = self.batch_size * (1 + self.bidirectional)
+        self.alpha_lim = [0.36, 0.96]
+        self.beta_lim = [0.96, 0.99]
+        self.a_lim = [0.0, 1.0]
+        self.b_lim = [0.0, 2.0]        
+        self.spike_fct = SpikeFunctionBoxcar.apply
+
+        # Trainable parameters
+        self.W = nn.Linear(self.input_size, self.hidden_size, bias=use_bias)
+        init.xavier_uniform_(self.W.weight)
+
+        self.recurrent = extra_features['recurrent']
+        if self.recurrent:
+            self.V = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
+
+        self.continuous = extra_features['continuous']
+        self.reparam = extra_features['reparam']
+        self.taylor = extra_features['taylor']
+        self.s4_init = extra_features['s4_init']
+        self.dt_train = extra_features['dt_train']
+        self.dt_uniform = extra_features['dt_uniform']
+        
+        if self.s4_init and self.dt_train:
+            alpha_real = torch.log(0.5 * torch.ones(self.hidden_size))
+            dt_min = extra_features["dt_min"]
+            dt_max = extra_features["dt_max"]
+            dt = torch.rand(self.hidden_size)*(
+                math.log(dt_max) - math.log(dt_min)
+            ) + math.log(dt_min)
+            alpha_im =  math.pi * torch.ones(self.hidden_size)
+            self.register("alpha_real", alpha_real, lr=0.001)
+            self.register("dt", dt, lr=0.001)
+            self.register("alpha_im", alpha_im, lr=0.001)
+        elif self.s4_init and self.dt_uniform:
+            alpha_real = torch.log(0.5 * torch.ones(self.hidden_size))
+            dt_min = extra_features["dt_min"]
+            dt_max = extra_features["dt_max"]
+            self.dt = torch.rand(self.hidden_size)*(
+                math.log(dt_max) - math.log(dt_min)
+            ) + math.log(dt_min)
+            alpha_im =  math.pi * torch.ones(self.hidden_size)
+            self.register("alpha_real", alpha_real, lr=0.001)
+            self.register("alpha_im", alpha_im, lr=0.001) 
+        elif self.s4_init:
+            alpha_real = torch.log(0.5 * torch.ones(self.hidden_size))
+            self.dt = torch.tensor([math.log(0.004)], requires_grad=False)
+            alpha_im =  math.pi * torch.ones(self.hidden_size)
+            self.register("alpha_real", alpha_real, lr=0.001)
+            self.register("alpha_im", alpha_im, lr=0.001) 
+        elif self.reparam and self.dt_train: 
+            self.dt = nn.Parameter(torch.Tensor(self.hidden_size))
+            nn.init.uniform_(self.dt, math.log(0.001), math.log(0.5))
+            self.alpha_real = nn.Parameter(torch.Tensor(self.hidden_size))
+            nn.init.uniform_(self.alpha_real, 0.0, math.log(10.0))
+            self.alpha_im = nn.Parameter(torch.Tensor(self.hidden_size))
+            nn.init.uniform_(self.alpha_im, 5.0, 10.0)
+        elif self.reparam: 
+            self.dt = torch.tensor([math.log(0.004)], requires_grad=False)
+            self.alpha_real = nn.Parameter(torch.Tensor(self.hidden_size))
+            nn.init.uniform_(self.alpha_real, 0.0, math.log(10.0))
+            self.alpha_im = nn.Parameter(torch.Tensor(self.hidden_size))
+            nn.init.uniform_(self.alpha_im, 5.0, 10.0)
+        elif self.dt_train:
+            self.dt = nn.Parameter(torch.Tensor(self.hidden_size))
+            nn.init.uniform_(self.dt, 0.001, 0.4)
+            self.alpha_real = nn.Parameter(torch.Tensor(self.hidden_size))
+            nn.init.uniform_(self.alpha_real, 1.0, 10.0)
+            self.alpha_im = nn.Parameter(torch.Tensor(self.hidden_size))
+            nn.init.uniform_(self.alpha_im, 5.0, 10.0)
+        elif self.continuous:
+            self.dt = torch.tensor([math.log(0.004)], requires_grad=False)
+            self.alpha_real = nn.Parameter(torch.Tensor(self.hidden_size))
+            self.alpha_im = nn.Parameter(torch.Tensor(self.hidden_size))
+            nn.init.uniform_(self.alpha_real, 1.0, 10.0)
+            nn.init.uniform_(self.alpha_im, 5.0, 10.0)           
+        else:
+            self.dt = 0
+            self.alpha = nn.Parameter(torch.Tensor(self.hidden_size))
+            self.beta = nn.Parameter(torch.Tensor(self.hidden_size))
+            nn.init.uniform_(self.alpha, self.alpha_lim[0], self.alpha_lim[1])
+            nn.init.uniform_(self.beta, self.beta_lim[0], self.beta_lim[1])
+
+        self.a = nn.Parameter(torch.Tensor(self.hidden_size))
+        self.b = nn.Parameter(torch.Tensor(self.hidden_size))
+        nn.init.uniform_(self.a, self.a_lim[0], self.a_lim[1])
+        nn.init.uniform_(self.b, self.b_lim[0], self.b_lim[1])
+
+
+        self.threshold = 1.0
+
+        if extra_features['half_reset']:
+            self.reset_factor = 0.5
+        else:
+            self.reset_factor = 1.0
+
+        # Initialize normalinzation
+        self.normalize = False
+        if normalization == "batchnorm":
+            self.norm = nn.BatchNorm1d(self.hidden_size, momentum=0.05)
+            self.normalize = True
+        elif normalization == "layernorm":
+            self.norm = nn.LayerNorm(self.hidden_size)
+            self.normalize = True
+
+        # Initialize dropout
+        self.drop = nn.Dropout(p=dropout)
+
+    def forward(self, x):
+
+        # Concatenate flipped sequence on batch dim
+        if self.bidirectional:
+            x_flip = x.flip(1)
+            x = torch.cat([x, x_flip], dim=0)
+
+        # Change batch size if needed
+        if self.batch_size != x.shape[0]:
+            self.batch_size = x.shape[0]
+
+        # Feed-forward affine transformations (all steps in parallel)
+        Wx = self.W(x)
+
+        #Wx = self.output_linear(Wx.reshape(Wx.shape[0], Wx.shape[2], Wx.shape[1])).reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
+
+        # Apply normalization
+        if self.normalize:
+            _Wx = self.norm(Wx.reshape(Wx.shape[0] * Wx.shape[1], Wx.shape[2]))
+            Wx = _Wx.reshape(Wx.shape[0], Wx.shape[1], Wx.shape[2])
+
+        # Compute spikes via neuron dynamics
+        s = self._rf_cell(Wx)
+
+        # Concatenate forward and backward sequences on feat dim
+        if self.bidirectional:
+            s_f, s_b = s.chunk(2, dim=0)
+            s_b = s_b.flip(1)
+            s = torch.cat([s_f, s_b], dim=2)
+
+        # Apply dropout
+        s = self.drop(s)
+
+        return s
+
+    def _rf_cell(self, Wx):
+
+        # Initializations
+        device = Wx.device
+        ut = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
+        wt = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
+        st = torch.rand(Wx.shape[0], Wx.shape[2]).to(device)
+
+        s = []       
+
+        if self.reparam or self.s4_init:
+            alpha = torch.exp(-torch.exp(self.alpha)*torch.exp(self.dt.to(device)))
+            beta = torch.exp(-torch.exp(self.beta)*torch.exp(self.dt.to(device)))
+        elif self.continuous or self.dt_train:
+            dt = torch.clamp(self.dt.to(device), min = 0.0004, max=1.0)
+            alpha = torch.exp(-self.alpha*dt)
+            beta = torch.exp(-self.beta*dt)
+
+        alpha = torch.clamp(self.alpha, min=self.alpha_lim[0], max=self.alpha_lim[1])
+        beta = torch.clamp(self.beta, min=self.beta_lim[0], max=self.beta_lim[1])
+
+        if self.decouple:
+            a = 0
+            b = torch.clamp(self.b, min=self.b_lim[0], max=self.b_lim[1])
+            B_u = 1
+            B_w = 1
+        else:
+            a = torch.clamp(self.a, min=self.a_lim[0], max=self.a_lim[1])
+            b = torch.clamp(self.b, min=self.b_lim[0], max=self.b_lim[1])
+            B_u = (1- alpha)
+            B_w = 0
+
+        # Loop over time axis
+        for t in range(Wx.shape[1]):
+
+
+            wt = beta * wt + a * ut + b * st + B_w*Wx[:, t, :] 
+            ut = alpha * (ut - st) + B_u* (Wx[:, t, :] - wt)
+
+            # Compute spikes with surrogate gradient
+            st = self.spike_fct(ut - self.threshold)
+            s.append(st)
+
+        return torch.stack(s, dim=1)
+
+    def register(self, name, tensor, lr=None):
+        """Register a tensor with a configurable learning rate and 0 weight decay"""
+
+        if lr == 0.0:
+            self.register_buffer(name, tensor)
+        else:
+            self.register_parameter(name, nn.Parameter(tensor))
+
+            optim = {"weight_decay": 0.0}
+            if lr is not None: optim["lr"] = lr
+            setattr(getattr(self, name), "_optim", optim)
+
 class RAFAblationLayer(nn.Module):
     """
     A single layer of Leaky Integrate-and-Fire neurons without layer-wise
