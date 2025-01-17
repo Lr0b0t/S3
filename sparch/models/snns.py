@@ -188,7 +188,7 @@ class SNN(nn.Module):
 
         self.extra_features = extra_features
 
-        if neuron_type not in ["LIF", "adLIF", "CadLIF", "RAFAblation", "RingInitLIFcomplex", "BRF", "ResonateFire", "RSEadLIF", "LIFfeature", "adLIFnoClamp","LIFfeatureDim", "adLIFclamp", "RLIF", "RadLIF", "LIFcomplex", "LIFcomplexBroad", "LIFrealcomplex","ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlphaNoB","RLIFcomplex1MinAlpha", "LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"]:
+        if neuron_type not in ["LIF", "adLIF", "CadLIF", "CadLIFAblation", "RAFAblation", "RingInitLIFcomplex", "BRF", "ResonateFire", "RSEadLIF", "LIFfeature", "adLIFnoClamp","LIFfeatureDim", "adLIFclamp", "RLIF", "RadLIF", "LIFcomplex", "LIFcomplexBroad", "LIFrealcomplex","ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlphaNoB","RLIFcomplex1MinAlpha", "LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"]:
             raise ValueError(f"Invalid neuron type {neuron_type}")
 
         # Init trainable parameters
@@ -1467,60 +1467,44 @@ class CadLIFAblationLayer(nn.Module):
         self.s4_init = extra_features['s4_init']
         self.dt_train = extra_features['dt_train']
         self.dt_uniform = extra_features['dt_uniform']
-        
-        if self.s4_init and self.dt_train:
-            alpha_real = torch.log(0.5 * torch.ones(self.hidden_size))
-            dt_min = extra_features["dt_min"]
-            dt_max = extra_features["dt_max"]
-            dt = torch.rand(self.hidden_size)*(
-                math.log(dt_max) - math.log(dt_min)
-            ) + math.log(dt_min)
-            alpha_im =  math.pi * torch.ones(self.hidden_size)
-            self.register("alpha_real", alpha_real, lr=0.001)
-            self.register("dt", dt, lr=0.001)
-            self.register("alpha_im", alpha_im, lr=0.001)
-        elif self.s4_init and self.dt_uniform:
-            alpha_real = torch.log(0.5 * torch.ones(self.hidden_size))
-            dt_min = extra_features["dt_min"]
-            dt_max = extra_features["dt_max"]
-            self.dt = torch.rand(self.hidden_size)*(
-                math.log(dt_max) - math.log(dt_min)
-            ) + math.log(dt_min)
-            alpha_im =  math.pi * torch.ones(self.hidden_size)
-            self.register("alpha_real", alpha_real, lr=0.001)
-            self.register("alpha_im", alpha_im, lr=0.001) 
-        elif self.s4_init:
-            alpha_real = torch.log(0.5 * torch.ones(self.hidden_size))
-            self.dt = torch.tensor([math.log(0.004)], requires_grad=False)
-            alpha_im =  math.pi * torch.ones(self.hidden_size)
-            self.register("alpha_real", alpha_real, lr=0.001)
-            self.register("alpha_im", alpha_im, lr=0.001) 
-        elif self.reparam and self.dt_train: 
-            self.dt = nn.Parameter(torch.Tensor(self.hidden_size))
-            nn.init.uniform_(self.dt, math.log(0.001), math.log(0.5))
-            self.alpha_real = nn.Parameter(torch.Tensor(self.hidden_size))
-            nn.init.uniform_(self.alpha_real, 0.0, math.log(10.0))
-            self.alpha_im = nn.Parameter(torch.Tensor(self.hidden_size))
-            nn.init.uniform_(self.alpha_im, 5.0, 10.0)
+        self.shared_alpha = extra_features['shared_alpha']       
+        self.shared_a = extra_features['shared_a']   
+        self.inp_b = extra_features['inp_b']  
+
+
+
+        if self.reparam and self.dt_train: 
+            self.dt = nn.Parameter(torch.full((self.hidden_size,), math.log(0.004)))
+            # nn.init.uniform_(self.dt, math.log(0.001), math.log(0.5))
+            self.alpha = nn.Parameter(torch.Tensor(self.hidden_size))
+            self.beta = nn.Parameter(torch.Tensor(self.hidden_size))
+            nn.init.uniform_(self.alpha, math.log(10.0), math.log(250.0))
+            nn.init.uniform_(self.beta, math.log(2.5), math.log(10.0))  
         elif self.reparam: 
             self.dt = torch.tensor([math.log(0.004)], requires_grad=False)
-            self.alpha_real = nn.Parameter(torch.Tensor(self.hidden_size))
-            nn.init.uniform_(self.alpha_real, 0.0, math.log(10.0))
-            self.alpha_im = nn.Parameter(torch.Tensor(self.hidden_size))
-            nn.init.uniform_(self.alpha_im, 5.0, 10.0)
+            self.alpha = nn.Parameter(torch.Tensor(self.hidden_size))
+            self.beta = nn.Parameter(torch.Tensor(self.hidden_size))
+            nn.init.uniform_(self.alpha, math.log(10.0), math.log(250.0))
+            nn.init.uniform_(self.beta, math.log(2.5), math.log(10.0))   
         elif self.dt_train:
             self.dt = nn.Parameter(torch.Tensor(self.hidden_size))
             nn.init.uniform_(self.dt, 0.001, 0.4)
-            self.alpha_real = nn.Parameter(torch.Tensor(self.hidden_size))
-            nn.init.uniform_(self.alpha_real, 1.0, 10.0)
-            self.alpha_im = nn.Parameter(torch.Tensor(self.hidden_size))
-            nn.init.uniform_(self.alpha_im, 5.0, 10.0)
+            self.alpha = nn.Parameter(torch.Tensor(self.hidden_size))
+            self.beta = nn.Parameter(torch.Tensor(self.hidden_size))
+            nn.init.uniform_(self.alpha, 10.0, 250.0)
+            nn.init.uniform_(self.beta, 2.5, 10.0)  
+        elif self.continuous and self.dt_uniform:
+            self.dt = torch.rand(self.hidden_size)*(0.4 - 0.001) + 0.001
+            self.alpha = nn.Parameter(torch.Tensor(self.hidden_size))
+            self.beta = nn.Parameter(torch.Tensor(self.hidden_size))
+            nn.init.uniform_(self.alpha, 10.0, 250.0)
+            nn.init.uniform_(self.beta, 2.5, 10.0)              
         elif self.continuous:
             self.dt = torch.tensor([math.log(0.004)], requires_grad=False)
-            self.alpha_real = nn.Parameter(torch.Tensor(self.hidden_size))
-            self.alpha_im = nn.Parameter(torch.Tensor(self.hidden_size))
-            nn.init.uniform_(self.alpha_real, 1.0, 10.0)
-            nn.init.uniform_(self.alpha_im, 5.0, 10.0)           
+            self.alpha = nn.Parameter(torch.Tensor(self.hidden_size))
+            self.beta = nn.Parameter(torch.Tensor(self.hidden_size))
+            nn.init.uniform_(self.alpha, 10.0, 250.0)
+            nn.init.uniform_(self.beta, 2.5, 10.0)           
         else:
             self.dt = 0
             self.alpha = nn.Parameter(torch.Tensor(self.hidden_size))
@@ -1533,6 +1517,13 @@ class CadLIFAblationLayer(nn.Module):
         nn.init.uniform_(self.a, self.a_lim[0], self.a_lim[1])
         nn.init.uniform_(self.b, self.b_lim[0], self.b_lim[1])
 
+        if self.inp_b:
+            self.inp_b = nn.Parameter(torch.rand(self.hidden_size))
+        else:
+            self.inp_b = None
+
+
+        self.no_clamp = extra_features['no_clamp']
 
         self.threshold = 1.0
 
@@ -1605,27 +1596,35 @@ class CadLIFAblationLayer(nn.Module):
             dt = torch.clamp(self.dt.to(device), min = 0.0004, max=1.0)
             alpha = torch.exp(-self.alpha*dt)
             beta = torch.exp(-self.beta*dt)
-
-        alpha = torch.clamp(self.alpha, min=self.alpha_lim[0], max=self.alpha_lim[1])
-        beta = torch.clamp(self.beta, min=self.beta_lim[0], max=self.beta_lim[1])
-
-        if self.decouple:
-            a = 0
-            b = torch.clamp(self.b, min=self.b_lim[0], max=self.b_lim[1])
-            B_u = 1
-            B_w = 1
         else:
-            a = torch.clamp(self.a, min=self.a_lim[0], max=self.a_lim[1])
-            b = torch.clamp(self.b, min=self.b_lim[0], max=self.b_lim[1])
-            B_u = (1- alpha)
-            B_w = 0
+            alpha = self.alpha
+            beta = self.beta
+
+        if not self.no_clamp:
+            alpha = torch.clamp(self.alpha, min=self.alpha_lim[0], max=self.alpha_lim[1])
+            beta = torch.clamp(self.beta, min=self.beta_lim[0], max=self.beta_lim[1])
+
+
+        a = torch.clamp(self.a, min=self.a_lim[0], max=self.a_lim[1])
+        b = torch.clamp(self.b, min=self.b_lim[0], max=self.b_lim[1])
+        B_u = (1- alpha)
+        R_u = (1- alpha)
+
+        if self.shared_alpha:
+            beta = alpha
+        if self.shared_a:
+            b = a
+            R_u = a
+        if self.inp_b!=None:
+            B_u = self.inp_b
+
 
         # Loop over time axis
         for t in range(Wx.shape[1]):
 
 
-            wt = beta * wt + a * ut + b * st + B_w*Wx[:, t, :] 
-            ut = alpha * (ut - st) + B_u* (Wx[:, t, :] - wt)
+            wt = beta * wt + a * ut + b * st #+ B_w*Wx[:, t, :] 
+            ut = alpha * (ut - st) + B_u* Wx[:, t, :] - R_u * wt
 
             # Compute spikes with surrogate gradient
             st = self.spike_fct(ut - self.threshold)
