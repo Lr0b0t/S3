@@ -30,7 +30,7 @@ def add_model_options(parser):
     parser.add_argument(
         "--model_type",
         type=str,
-        choices=["LIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "CadLIFAblation", "RingInitLIFcomplex", "RAFAblation", "BRF", "ResonateFire", "RSEadLIF", "RLIF", "RadLIF", "MLP", "RNN", "LiGRU", "GRU","LIFcomplexBroad", "LIFcomplex", "LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlpha", "adLIFclamp", "RLIFcomplex1MinAlphaNoB","LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"],
+        choices=["LIF", "CSiLIF", "SiLIF", "LIFfeature", "adLIFnoClamp", "LIFfeatureDim", "adLIF", "CadLIF", "CadLIFAblation", "RingInitLIFcomplex", "RAFAblation", "BRF", "ResonateFire", "RSEadLIF", "RLIF", "RadLIF", "MLP", "RNN", "LiGRU", "GRU","LIFcomplexBroad", "LIFcomplex", "LIFrealcomplex", "ReLULIFcomplex", "RLIFcomplex","RLIFcomplex1MinAlpha", "adLIFclamp", "RLIFcomplex1MinAlphaNoB","LIFcomplex_gatedB", "LIFcomplex_gatedDt", "LIFcomplexDiscr"],
         default="LIF",
         help="Type of ANN or SNN model.",
     )
