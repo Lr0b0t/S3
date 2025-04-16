@@ -184,7 +184,7 @@ class SNN(nn.Module):
         self.bidirectional = bidirectional
         self.use_readout_layer = use_readout_layer
         self.is_snn = True
-        self.jaxreadout = extra_features['jaxreadout']
+        self.jaxreadout = extra_features.get('jaxreadout', False)
 
         self.extra_features = extra_features
 
@@ -199,7 +199,7 @@ class SNN(nn.Module):
         snn = nn.ModuleList([])
         input_size = self.input_size
         snn_class = self.neuron_type + "Layer"
-        input_class = self.extra_features.get('input_layer_type', False) + "Layer"
+        
         
 
         if self.use_readout_layer:
@@ -209,6 +209,7 @@ class SNN(nn.Module):
 
         #Hidden layers
         if self.extra_features.get('use_input_layer', False):
+            input_class = self.extra_features.get('input_layer_type', False) + "Layer"
             extra_in = self.extra_features
             extra_in["dt_min"] = extra_in.get('dt_min_in', extra_in.get("dt_min"))
             extra_in["dt_max"] = extra_in.get('dt_max_in', extra_in.get("dt_max"))
@@ -1298,13 +1299,13 @@ class CadLIFLayer(nn.Module):
         # Initialize dropout
         self.drop = nn.Dropout(p=dropout)
 
-        if extra_features['rst_detach']:
+        if extra_features.get('rst_detach', False):
             self.rst_detach = True
         else:
             self.rst_detach = False
 
         self.gate = False
-        if extra_features['gating']:
+        if extra_features.get('gating', False):
             self.alpha_gate_fn, self.W_alpha_gate, self.alpha_gamma = gating_function(extra_features['gating'], False, self.hidden_size, self.hidden_size)
             self.beta_gate_fn, self.W_beta_gate, self.beta_gamma = gating_function(extra_features['gating'], False, self.hidden_size, self.hidden_size)            
             self.gate = True
@@ -1615,7 +1616,7 @@ class CadLIFAblationLayer(nn.Module):
         self.W = nn.Linear(self.input_size, self.hidden_size, bias=use_bias)
         init.xavier_uniform_(self.W.weight)
 
-        self.recurrent = extra_features['recurrent']
+        self.recurrent = extra_features.get('recurrent', False)
         if self.recurrent:
             self.V = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
 
@@ -1861,7 +1862,7 @@ class SiLIFLayer(nn.Module):
         self.W = nn.Linear(self.input_size, self.hidden_size, bias=use_bias)
         init.xavier_uniform_(self.W.weight)
 
-        self.recurrent = extra_features['recurrent']
+        self.recurrent = extra_features.get('recurrent', False)
         if self.recurrent:
             self.V = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
 
@@ -2027,7 +2028,7 @@ class RAFAblationLayer(nn.Module):
         # Trainable parameters
         self.W = nn.Linear(self.input_size, self.hidden_size, bias=use_bias)
 
-        self.recurrent = extra_features['recurrent']
+        self.recurrent = extra_features.get('recurrent', False)
         if self.recurrent:
             self.V = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
 
@@ -2274,7 +2275,7 @@ class ResonateFireLayer(nn.Module):
         # Trainable parameters
         self.W = nn.Linear(self.input_size, self.hidden_size, bias=use_bias)
 
-        self.recurrent = extra_features['recurrent']
+        self.recurrent = extra_features.get('recurrent', False)
         if self.recurrent:
             self.V = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
 
@@ -2421,7 +2422,7 @@ class BRFLayer(nn.Module):
         # Trainable parameters
         self.W = nn.Linear(self.input_size, self.hidden_size, bias=use_bias)
 
-        self.recurrent = extra_features['recurrent']
+        self.recurrent = extra_features.get('recurrent', False)
         if self.recurrent:
             self.V = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
 
@@ -5366,7 +5367,7 @@ class ReadoutLayer(nn.Module):
         nn.init.uniform_(self.alpha, self.alpha_lim[0], self.alpha_lim[1])
 
         # Initialize normalization
-        if extra_features['layernorm_readout']:
+        if extra_features.get('layernorm_readout', False):
             self.norm = nn.LayerNorm(self.hidden_size)
             self.normalize = True
         else:
@@ -5382,7 +5383,7 @@ class ReadoutLayer(nn.Module):
         # Initialize dropout
         self.drop = nn.Dropout(p=dropout)
 
-        self.time_offset = extra_features['time_offset']
+        self.time_offset = extra_features.get('time_offset', 0)
 
     def forward(self, x):
 

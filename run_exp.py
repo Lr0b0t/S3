@@ -143,4 +143,5 @@ if __name__ == "__main__":
 
             print('SWEEP ID: '+sweep_id)
             # Run the sweep
-            wandb.agent(sweep_id, function=main)
+            if not args.only_createsweep:
+                wandb.agent(sweep_id, function=main)

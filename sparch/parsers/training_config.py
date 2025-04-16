@@ -46,6 +46,11 @@ def add_training_options(parser):
         help="Trigger debug mode with no sweep on wandb use.",
     )
     parser.add_argument(
+        "--only_createsweep",
+        action='store_true',
+        help="Only create sweep without launching agent.",
+    )
+    parser.add_argument(
         "--s4_opt",
         nargs='+',
         type=str2bool,
